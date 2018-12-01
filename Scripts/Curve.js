@@ -537,12 +537,36 @@ class Curve {
         return ts;
     }
 
-    getClickedHandle(x, y) {
+    // function HitTest(t, hit, normal) {
+    //     this.t = arguments.length ? t : Number.MAX_VALUE;
+    //     this.hit = hit;
+    //     this.normal = normal;
+    // }
+
+    intersectSphere(origin, dir, center, radius) 
+    {
+        var offset = vec3.create()
+        vec3.subtract(offset, origin, center);
+        var a = vec3.dot(dir, dir);
+        var b = 2 * vec3.dot(dir, offset);
+        var c = vec3.dot(offset, offset) - radius * radius;
+        var discriminant = b * b - 4 * a * c;
+
+        if (discriminant > 0) {
+            return true;
+            // var t = (-b - Math.sqrt(discriminant)) / (2 * a);
+            // var hit = vec3.create();
+            // vec3.add(hit, origin, (ray[0] * t, ray[1] * t, ray[2] * t));
+            // return new HitTest(t, hit, hit.subtract(center).divide(radius));
+        }
+        return false;
+    }
+
+    getClickedHandle(ray) {
         for (var i = 0; i < this.controlPoints.length / 3; ++i) {
-            var deltaX = x - this.controlPoints[3 * i + 0];
-            var deltaY = y - this.controlPoints[3 * i + 1];
-            var distSqrd = deltaX * deltaX + deltaY * deltaY;
-            if (distSqrd * .9 < (this.handleRadius * this.handleRadius))
+            /* Ray sphere intersection here... */
+            let result = this.intersectSphere(ray.pos, ray.dir, [this.controlPoints[3 * i + 0], this.controlPoints[3 * i + 1], this.controlPoints[3 * i + 2]], this.handleRadius * 1.5);
+            if (result == true)
                 return i;
         }
         return -1;
@@ -576,9 +600,10 @@ class Curve {
         return -1;
     }
 
-    moveHandle(handleIdx, x, y) {
-        this.controlPoints[3 * handleIdx + 0] = x;
-        this.controlPoints[3 * handleIdx + 1] = y;
+    moveHandle(handleIdx, pos) {
+        this.controlPoints[3 * handleIdx + 0] = pos[0];
+        this.controlPoints[3 * handleIdx + 1] = pos[1];
+        this.controlPoints[3 * handleIdx + 2] = pos[2];
     }
 
     removeHandle(handleIdx) {
@@ -604,14 +629,14 @@ class Curve {
     }
     distToSegment(p, v, w) { return Math.sqrt(this.distToSegmentSquared(p, v, w)); }
 
-    addHandle(x, y, addToFront = false, addToBack = false, addToClosest = true) {
+    addHandle(x, y, z, addToFront = false, addToBack = false, addToClosest = true) {
         var p = vec2.create()
         vec2.set(p, x, y);
 
         if (addToBack) {
-            this.controlPoints.push(x, y, 0.0)
+            this.controlPoints.push(x, y, z)
         } else if (addToFront) {
-            this.controlPoints.unshift(x, y, 0.0);
+            this.controlPoints.unshift(x, y, z);
         }
         else {
             var closest = -1;
@@ -672,8 +697,8 @@ class Curve {
         this.updateConstraints();
     }
 
-    setTemporaryHandle(x, y, r, g, b, a) {
-        this.temporaryPoint = [x, y, 0.0]
+    setTemporaryHandle(x, y, z, r, g, b, a) {
+        this.temporaryPoint = [x, y, z]
         this.temporaryPointColor = [r, g, b, a]
     }
 
@@ -683,7 +708,9 @@ class Curve {
     }
 
     getHandlePos(index) {
-        return [this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2]]
+        let pos = vec3.create();
+        vec3.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2]);
+        return pos;
     }
 
     bernstein(n, k, t) {

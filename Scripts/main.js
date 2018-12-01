@@ -1,8 +1,8 @@
-import { CurveEditor } from "./3DCurveEditor.js"
+import { BSplineEditor } from "./BSplineEditor.js"
 import { KnotEditor } from "./KnotEditor.js"
 import { Curve } from "./Curve.js"
 
-let curveEditor;
+let bsplineEditor;
 let knotEditor;
 let knotEditorOpen = false;
 
@@ -77,13 +77,13 @@ angular
 
         $timeout(function () {
             const render = function (time) {
-                curveEditor.render(time);
+                bsplineEditor.render(time);
                 knotEditor.render(time);
                 requestAnimationFrame(render);
             };
             
             window.onresize = function () {
-                curveEditor.resize()
+                bsplineEditor.resize()
                 knotEditor.resize()
             };
             
@@ -157,11 +157,11 @@ angular
             //                 curves[i].showControlPolygon = true;
             //                 curves[i].showControlPoints = false;
             //             }
-            //             curveEditor.curves.push(curves[i])
+            //             bsplineEditor.curves.push(curves[i])
             //         }
             //         console.log(lines);
-            //         curveEditor.backup();
-            //         curveEditor.selectedCurve = 0; // TEMPORARY
+            //         bsplineEditor.backup();
+            //         bsplineEditor.selectedCurve = 0; // TEMPORARY
             //     }
             //     reader.readAsText(selectedFile);
             // });
@@ -255,18 +255,18 @@ angular
                             curves[i].showControlPolygon = true;
                             curves[i].showControlPoints = false;
                         }
-                        curveEditor.curves.push(curves[i])
+                        bsplineEditor.curves.push(curves[i])
                     }
                     console.log(lines);
-                    curveEditor.backup();
-                    curveEditor.selectedCurve = 0; // TEMPORARY
+                    bsplineEditor.backup();
+                    bsplineEditor.selectedCurve = 0; // TEMPORARY
 
                 }
                 reader.readAsText(selectedFile);
                 document.getElementById("UploadBSplineFile").value = ""
             });
 
-            curveEditor = new CurveEditor();
+            bsplineEditor = new BSplineEditor();
             knotEditor = new KnotEditor();
             requestAnimationFrame(render);
         });
@@ -283,7 +283,7 @@ angular
         };
 
         $scope.updateSnapping = function (ev) {
-            curveEditor.setSnappingMode($scope.settings.snappingEnabled);
+            bsplineEditor.setSnappingMode($scope.settings.snappingEnabled);
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('Snapping ' + ($scope.settings.snappingEnabled) ? "enabled" : "disabled"+ '.')
@@ -293,9 +293,9 @@ angular
         }
 
         $scope.updateVisibility = function (ev) {
-            curveEditor.setControlPolygonVisibility($scope.settings.showControlPolygon);
-            curveEditor.setControlHandleVisibility($scope.settings.showControlHandles);
-            curveEditor.setCurveVisibility($scope.settings.showCurve);
+            bsplineEditor.setControlPolygonVisibility($scope.settings.showControlPolygon);
+            bsplineEditor.setControlHandleVisibility($scope.settings.showControlHandles);
+            bsplineEditor.setCurveVisibility($scope.settings.showCurve);
 
             $mdToast.show(
                 $mdToast.simple()
@@ -307,7 +307,7 @@ angular
 
         $scope.addCurve = function (ev) {
             console.log(ev);
-            curveEditor.newCurve()
+            bsplineEditor.newCurve()
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('Curve added.')
@@ -317,7 +317,7 @@ angular
         };
 
         $scope.deleteCurve = function (ev) {
-            if (curveEditor.getSelectedCurve() == -1) {
+            if (bsplineEditor.getSelectedCurve() == -1) {
                 $mdToast.show(
                     $mdToast.simple()
                         .textContent('Error: no curve selected.')
@@ -327,11 +327,11 @@ angular
                 return;
             }
 
-            curveEditor.deleteLastCurve();
+            bsplineEditor.deleteLastCurve();
         };
 
         $scope.deleteLastHandle = function (ev) {
-            if (curveEditor.getSelectedCurve() == -1) {
+            if (bsplineEditor.getSelectedCurve() == -1) {
                 $mdToast.show(
                     $mdToast.simple()
                         .textContent('Error: no handle selected.')
@@ -341,19 +341,19 @@ angular
                 return;
             }
 
-            curveEditor.deleteLastHandle();
+            bsplineEditor.deleteLastHandle();
         }
 
         $scope.updateInsertionMode = function (ev) {
             console.log($scope.settings.insertionMode)
             if ($scope.settings.insertionMode == "front") {
-                curveEditor.setAddMode(true, false, false);
+                bsplineEditor.setAddMode(true, false, false);
             }
             if ($scope.settings.insertionMode == "back") {
-                curveEditor.setAddMode(false, true, false);
+                bsplineEditor.setAddMode(false, true, false);
             }
             if ($scope.settings.insertionMode == "closest") {
-                curveEditor.setAddMode(false, false, true);
+                bsplineEditor.setAddMode(false, false, true);
             }
 
             $mdToast.show(
@@ -398,7 +398,7 @@ angular
 
         $scope.resetCamera = function (ev) {
             $scope.settings.zoom = 400;
-            curveEditor.resetCamera();
+            bsplineEditor.resetCamera();
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('Camera reset.')
@@ -408,16 +408,18 @@ angular
         }
 
         $scope.toggleOrtho = function (ev) {
-            curveEditor.setOrthoEnabled($scope.settings.useOrtho);
+            bsplineEditor.setOrthoEnabled($scope.settings.useOrtho);
         }
 
         $scope.updateZoom = function () {
             var amount = (1000.0 - $scope.settings.zoom) / 1000.0;
-            amount *= 2;
-            amount += 1;
-            amount *= .5;
+            amount *= 3;
+            amount -= 1;
+            // amount += .5;
+            // amount *= .1;
 
-            curveEditor.updateZoom(amount);
+            
+            bsplineEditor.updateZoom(amount);
         }
 
         $scope.save = function (ev) {
@@ -441,23 +443,23 @@ angular
             }
 
             var text = "# Number of curves: \n"
-            text += curveEditor.curves.length + "\n"
-            for (var i = 0; i < curveEditor.curves.length; ++i) {
+            text += bsplineEditor.curves.length + "\n"
+            for (var i = 0; i < bsplineEditor.curves.length; ++i) {
                 text += "\n# Curve " + i + "\n";
                 text += "# Degree: \n";
-                text += curveEditor.curves[i].getDegree() + "\n";
+                text += bsplineEditor.curves[i].getDegree() + "\n";
                 text += "# Number of control points: \n";
-                text += curveEditor.curves[i].getNumCtlPoints() + "\n";
+                text += bsplineEditor.curves[i].getNumCtlPoints() + "\n";
                 text += "# Control point data: \n";
-                for (var j = 0; j < curveEditor.curves[i].getNumCtlPoints(); ++j) {
-                    text += curveEditor.curves[i].controlPoints[j * 3 + 0] + "    ";
-                    text += curveEditor.curves[i].controlPoints[j * 3 + 1] + "\n"
+                for (var j = 0; j < bsplineEditor.curves[i].getNumCtlPoints(); ++j) {
+                    text += bsplineEditor.curves[i].controlPoints[j * 3 + 0] + "    ";
+                    text += bsplineEditor.curves[i].controlPoints[j * 3 + 1] + "\n"
                 }
                 text += "# Knot present: \n";
                 text += "1 \n";
                 text += "# Knot data: \n";
-                for (var j = 0; j < curveEditor.curves[i].knot_vector.length; ++j) {
-                    text += curveEditor.curves[i].knot_vector[j] + " ";
+                for (var j = 0; j < bsplineEditor.curves[i].knot_vector.length; ++j) {
+                    text += bsplineEditor.curves[i].knot_vector[j] + " ";
                 }
                 text += "\n";
             }
@@ -465,7 +467,7 @@ angular
         };
 
         $scope.renameDesign = function (ev) {
-            curveEditor.setShortcutsEnabled(false);
+            bsplineEditor.setShortcutsEnabled(false);
 
             // Appending dialog to document.body to cover sidenav in docs app
             var confirm = $mdDialog.prompt()
@@ -482,7 +484,7 @@ angular
             $mdDialog.show(confirm).then((result) => {
                 $scope.settings.designName = result;
                 localStorage.setItem("design_name", $scope.settings.designName);
-                curveEditor.setShortcutsEnabled(true);
+                bsplineEditor.setShortcutsEnabled(true);
 
                 $mdToast.show(
                     $mdToast.simple()
@@ -497,12 +499,12 @@ angular
                         .position('bottom right')
                         .hideDelay(3000)
                 );
-                curveEditor.setShortcutsEnabled(true);
+                bsplineEditor.setShortcutsEnabled(true);
             });
         };
 
         $scope.newDesign = function (ev) {
-            curveEditor.setShortcutsEnabled(false);
+            bsplineEditor.setShortcutsEnabled(false);
 
             // Appending dialog to document.body to cover sidenav in docs app
             var confirm = $mdDialog.prompt()
@@ -518,12 +520,12 @@ angular
 
             $mdDialog.show(confirm).then((result) => {
                 $scope.settings.designName = result;
-                curveEditor.deleteAll();
+                bsplineEditor.deleteAll();
                 localStorage.setItem("design_name", $scope.settings.designName);
-                curveEditor.setShortcutsEnabled(true);
+                bsplineEditor.setShortcutsEnabled(true);
             }, () => {
                 console.log('New design canceled');
-                curveEditor.setShortcutsEnabled(true);
+                bsplineEditor.setShortcutsEnabled(true);
             });
         };
 
@@ -542,7 +544,7 @@ angular
         };
 
         $scope.openBottomSheet = function (ev) {
-            if (curveEditor.getSelectedCurve() == -1) {
+            if (bsplineEditor.getSelectedCurve() == -1) {
                 $mdToast.show(
                     $mdToast.simple()
                         .textContent('Select a curve first.')
@@ -583,31 +585,31 @@ angular
     })
     .controller('KnotEditorCtrl', function ($scope, $mdToast, $mdBottomSheet, $timeout, $mdDialog) {
         $scope.data = {
-            curve: curveEditor.getSelectedCurve(),
-            degree: curveEditor.getSelectedCurve().getDegree(),
+            curve: bsplineEditor.getSelectedCurve(),
+            degree: bsplineEditor.getSelectedCurve().getDegree(),
             minDegree: 1,
-            maxDegree: curveEditor.getNumCtlPointsOfSelected() - 1,
-            makeOpen: curveEditor.getSelectedCurve().isOpen,
-            makeUniform: curveEditor.getSelectedCurve().isUniform
+            maxDegree: bsplineEditor.getNumCtlPointsOfSelected() - 1,
+            makeOpen: bsplineEditor.getSelectedCurve().isOpen,
+            makeUniform: bsplineEditor.getSelectedCurve().isUniform
         };
         $timeout(function () {
             knotEditor.initializeWebGL();
             knotEditor.setCurve($scope.data.curve);
             knotEditor.updateBasisFunctions();
-            curveEditor.backup();
+            bsplineEditor.backup();
         });
         $scope.listItemClick = function () {
         };
         $scope.$on("$destroy", function () {
             knotEditor.clearWebGL();
-            curveEditor.backup();
+            bsplineEditor.backup();
             knotEditorOpen = false;
         });
         $scope.updateDegree = function () {
             $scope.data.curve.setDegree($scope.data.degree);
             // knotEditor.generateUniformFloatingKnotVector();
             knotEditor.updateBasisFunctions();
-            curveEditor.backup();
+            bsplineEditor.backup();
         }
         $scope.increaseDegree = function () {
             if ($scope.data.degree >= 8) {
