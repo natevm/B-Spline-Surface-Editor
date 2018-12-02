@@ -1,6 +1,6 @@
 <html id="editor">
 <header>
-    <title>B-Spline Curve Editor</title>
+    <title>B-Spline BSpline Editor</title>
     <link rel="stylesheet" href="./Styles/reset.css">
     <link rel="stylesheet" href="./Styles/fonts.css">
     <link rel="stylesheet" href="./Styles/flexbox.css">
@@ -116,14 +116,14 @@
                                 </md-menu-item>
                                 <md-menu-divider></md-menu-divider>
                                 <md-menu-item class="md-indent">
-                                    <md-button ng-click="addCurve($event)">
-                                        Add Curve
+                                    <md-button ng-click="addBSpline($event)">
+                                        Add BSpline
                                         <span class="md-alt-text">{{ 'N' | keyboardShortcut }}</span>
                                     </md-button>
                                 </md-menu-item>
                                 <md-menu-item class="md-indent">
-                                    <md-button ng-click="deleteCurve($event)">
-                                        Delete Curve
+                                    <md-button ng-click="deleteBSpline($event)">
+                                        Delete BSpline
                                         <span class="md-alt-text">{{ 'Del' | keyboardShortcut }}</span>
                                     </md-button>
                                 </md-menu-item>
@@ -180,8 +180,8 @@
                                     Control Polygon</md-menu-item>
                                 <md-menu-item type="checkbox" ng-model="settings.showControlHandles" ng-click="updateVisibility($event)">Show
                                     Control Handles</md-menu-item>
-                                <md-menu-item type="checkbox" ng-model="settings.showCurve" ng-click="updateVisibility($event)">Show
-                                    Curve</md-menu-item>
+                                <md-menu-item type="checkbox" ng-model="settings.showBSpline" ng-click="updateVisibility($event)">Show
+                                    BSpline</md-menu-item>
                                 <md-menu-divider></md-menu-divider>
                                 <md-menu-item type="checkbox" ng-model="settings.fullScreen" ng-click="toggleFullScreen($event)"
                                     nv>Full screen</md-menu-item>
@@ -228,16 +228,16 @@
                         </md-menu>
 
                         <md-menu>
-                            <md-button class="md-icon-button" aria-label="More" ng-click="addCurve($event)">
-                                <md-tooltip md-direction="bottom">Add Curve</md-tooltip>
+                            <md-button class="md-icon-button" aria-label="More" ng-click="addBSpline($event)">
+                                <md-tooltip md-direction="bottom">Add BSpline</md-tooltip>
                                 <md-icon md-svg-icon="img/icons/green_add.svg"></md-icon>
                             </md-button>
                             <md-menu-content></md-menu-content>
                         </md-menu>
                         
                         <md-menu>
-                            <md-button class="md-icon-button" aria-label="More" ng-click="deleteCurve($event)">
-                                <md-tooltip md-direction="bottom">Delete Curve</md-tooltip>
+                            <md-button class="md-icon-button" aria-label="More" ng-click="deleteBSpline($event)">
+                                <md-tooltip md-direction="bottom">Delete BSpline</md-tooltip>
                                 <md-icon md-svg-icon="img/icons/rubbish-bin.svg"></md-icon>
                             </md-button>
                             <md-menu-content></md-menu-content>

@@ -35,9 +35,9 @@ function hslToRgb(h, s, l) {
 }
 
 
-class Curve {
+class BSpline {
     static Initialize(gl) {
-        Curve.gl = gl;
+        BSpline.gl = gl;
 
         let bfsSource = "";
         let bvsSource = "";
@@ -83,46 +83,46 @@ class Curve {
         }));
 
         Promise.all(promises).then(() => {
-            Curve.BSplineShaderProgram = Curve.InitShaderProgram(gl, bvsSource, bfsSource);
-            Curve.BSplineProgramInfo = {
-                program: Curve.BSplineShaderProgram,
+            BSpline.BSplineShaderProgram = BSpline.InitShaderProgram(gl, bvsSource, bfsSource);
+            BSpline.BSplineProgramInfo = {
+                program: BSpline.BSplineShaderProgram,
                 attribLocations: {
-                    t: gl.getAttribLocation(Curve.BSplineShaderProgram, 't'),
-                    direction: gl.getAttribLocation(Curve.BSplineShaderProgram, 'direction'),
+                    t: gl.getAttribLocation(BSpline.BSplineShaderProgram, 't'),
+                    direction: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'direction'),
                 },
                 uniformLocations: {
-                    projection: gl.getUniformLocation(Curve.BSplineShaderProgram, 'projection'),
-                    modelView: gl.getUniformLocation(Curve.BSplineShaderProgram, 'modelView'),
-                    thickness: gl.getUniformLocation(Curve.BSplineShaderProgram, 'thickness'),
-                    aspect: gl.getUniformLocation(Curve.BSplineShaderProgram, 'aspect'),
-                    miter: gl.getUniformLocation(Curve.BSplineShaderProgram, 'miter'),
-                    controlPoints: gl.getUniformLocation(Curve.BSplineShaderProgram, 'uControlPoints'),
-                    numControlPoints: gl.getUniformLocation(Curve.BSplineShaderProgram, 'uNumControlPoints'),
-                    knotVector: gl.getUniformLocation(Curve.BSplineShaderProgram, 'uKnotVector'),
-                    knotIndex: gl.getUniformLocation(Curve.BSplineShaderProgram, 'knot_index'),
-                    degree: gl.getUniformLocation(Curve.BSplineShaderProgram, 'degree'),
-                    tmin: gl.getUniformLocation(Curve.BSplineShaderProgram, 'tMin'),
-                    tmax: gl.getUniformLocation(Curve.BSplineShaderProgram, 'tMax'),
+                    projection: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'projection'),
+                    modelView: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'modelView'),
+                    thickness: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'thickness'),
+                    aspect: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'aspect'),
+                    miter: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'miter'),
+                    controlPoints: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'uControlPoints'),
+                    numControlPoints: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'uNumControlPoints'),
+                    knotVector: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'uKnotVector'),
+                    knotIndex: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'knot_index'),
+                    degree: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'degree'),
+                    tmin: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'tMin'),
+                    tmax: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'tMax'),
                 },
             };
 
-            Curve.LineShaderProgram = Curve.InitShaderProgram(gl, lvsSource, lfsSource);
-            Curve.LineProgramInfo = {
-                program: Curve.LineShaderProgram,
+            BSpline.LineShaderProgram = BSpline.InitShaderProgram(gl, lvsSource, lfsSource);
+            BSpline.LineProgramInfo = {
+                program: BSpline.LineShaderProgram,
                 attribLocations: {
-                    position: gl.getAttribLocation(Curve.LineShaderProgram, 'position'),
-                    next: gl.getAttribLocation(Curve.LineShaderProgram, 'next'),
-                    previous: gl.getAttribLocation(Curve.LineShaderProgram, 'previous'),
-                    direction: gl.getAttribLocation(Curve.LineShaderProgram, 'direction'),
-                    color: gl.getAttribLocation(Curve.LineShaderProgram, 'color'),
+                    position: gl.getAttribLocation(BSpline.LineShaderProgram, 'position'),
+                    next: gl.getAttribLocation(BSpline.LineShaderProgram, 'next'),
+                    previous: gl.getAttribLocation(BSpline.LineShaderProgram, 'previous'),
+                    direction: gl.getAttribLocation(BSpline.LineShaderProgram, 'direction'),
+                    color: gl.getAttribLocation(BSpline.LineShaderProgram, 'color'),
                 },
                 uniformLocations: {
-                    projection: gl.getUniformLocation(Curve.LineShaderProgram, 'projection'),
-                    modelView: gl.getUniformLocation(Curve.LineShaderProgram, 'modelView'),
-                    thickness: gl.getUniformLocation(Curve.LineShaderProgram, 'thickness'),
-                    aspect: gl.getUniformLocation(Curve.LineShaderProgram, 'aspect'),
-                    miter: gl.getUniformLocation(Curve.LineShaderProgram, 'miter'),
-                    color: gl.getUniformLocation(Curve.LineShaderProgram, 'ucolor'),
+                    projection: gl.getUniformLocation(BSpline.LineShaderProgram, 'projection'),
+                    modelView: gl.getUniformLocation(BSpline.LineShaderProgram, 'modelView'),
+                    thickness: gl.getUniformLocation(BSpline.LineShaderProgram, 'thickness'),
+                    aspect: gl.getUniformLocation(BSpline.LineShaderProgram, 'aspect'),
+                    miter: gl.getUniformLocation(BSpline.LineShaderProgram, 'miter'),
+                    color: gl.getUniformLocation(BSpline.LineShaderProgram, 'ucolor'),
                 },
             };
         });
@@ -130,8 +130,8 @@ class Curve {
 
     // Initialize a shader program, so WebGL knows how to draw our data
     static InitShaderProgram(gl, vsSource, fsSource) {
-        const vertexShader = Curve.LoadShader(gl, gl.VERTEX_SHADER, vsSource);
-        const fragmentShader = Curve.LoadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+        const vertexShader = BSpline.LoadShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = BSpline.LoadShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
         // Create the shader program
         const shaderProgram = gl.createProgram();
@@ -169,15 +169,15 @@ class Curve {
         return shader;
     }
 
-    constructor(x = 0, y = 0, obj = null) {
-        this.showCurve = true;
+    constructor(obj = null) {
+        this.showBSpline = true;
         this.showControlPolygon = true;
         this.showControlPoints = true;
         this.thickness = (obj == null) ? 5.0 : obj.thickness;
-        this.controlPoints = (obj == null) ? [
-            -.1 + x, y, 0.0,
-            .1 + x, y, 0.0,
-        ] : obj.controlPoints.slice();
+        this.controlPoints = (obj == null) ? [[
+            -.1, 0.0, 0.0,
+            .1, 0.0, 0.0,
+        ]] : obj.controlPoints.slice();
         this.temporaryPoint = []
 
         this.handleRadius = 50;
@@ -190,7 +190,8 @@ class Curve {
         this.isOpen =  (obj == null) ? true : obj.isOpen;
         this.isUniform = (obj == null) ?  true : obj.isUniform;
         this.degree = (obj == null) ? 1 : obj.degree;
-        this.knot_vector = (obj == null) ? [0.0, .33, .66, 1.0] : obj.knot_vector.slice();
+        this.u_knot_vector = (obj == null) ? [0.0, .33, .66, 1.0] : obj.u_knot_vector.slice();
+        this.v_knot_vector = (obj == null) ? [0.0, .33, .66, 1.0] : obj.v_knot_vector.slice();
         this.numSamples = 3 * this.degree + 20;
 
         this.updateConstraints();
@@ -201,7 +202,8 @@ class Curve {
         return {
             thickness: this.thickness,
             controlPoints: this.controlPoints,
-            knot_vector: this.knot_vector,
+            u_knot_vector: this.u_knot_vector,
+            v_knot_vector: this.v_knot_vector,
             degree: this.degree,
             isOpen: this.isOpen,
             isUniform: this.isUniform
@@ -223,7 +225,7 @@ class Curve {
     }
 
     getNumCtlPoints() {
-        return this.controlPoints.length / 3;
+        return this.controlPoints[0].length / 3;
     }
 
     getDegree() {
@@ -247,49 +249,49 @@ class Curve {
         else return;
 
         this.numSamples = 2 * this.degree + 20;
-        if (this.knot_vector == undefined) {
-            this.knot_vector = [];
+        if (this.u_knot_vector == undefined) {
+            this.u_knot_vector = [];
         }
 
         let numKnots = this.getOrder() + this.getNumCtlPoints();
         if (oldDegree < this.degree) {
             for (var i = numKnots - (this.degree - oldDegree); i < numKnots; ++i) {
-                this.knot_vector.push(i / (numKnots - (1 + this.degree - oldDegree)));
+                this.u_knot_vector.push(i / (numKnots - (1 + this.degree - oldDegree)));
             }
         } else {
-            this.knot_vector = this.knot_vector.slice(0, numKnots);
+            this.u_knot_vector = this.u_knot_vector.slice(0, numKnots);
         }
 
         for (var i = 0; i < numKnots; ++i) {
-            this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
+            this.u_knot_vector[i] /= this.u_knot_vector[this.u_knot_vector.length - 1];
         }
         this.updateConstraints();
     }
 
     makeKnotVectorUniform() {
-        this.knot_vector = [];
+        this.u_knot_vector = [];
         let numKnots = this.getOrder() + this.getNumCtlPoints();
         for (var i = 0; i < numKnots; ++i) {
-            this.knot_vector.push(i / (numKnots - 1));
+            this.u_knot_vector.push(i / (numKnots - 1));
         }
     }
 
     makeKnotVectorOpen() {
         let numKnots = this.getOrder() + this.getNumCtlPoints();
-        var lower = this.knot_vector[this.degree];
-        var upper = this.knot_vector[this.knot_vector.length - 1 - (this.degree)];
+        var lower = this.u_knot_vector[this.degree];
+        var upper = this.u_knot_vector[this.u_knot_vector.length - 1 - (this.degree)];
 
         for (var i = 0; i < numKnots; ++i) {
-            this.knot_vector[i] -= lower;
-            this.knot_vector[i] /= (upper - lower);
+            this.u_knot_vector[i] -= lower;
+            this.u_knot_vector[i] /= (upper - lower);
         }
 
         for (var i = 0; i < this.degree; ++i) {
-            this.knot_vector[i] = 0.0;
+            this.u_knot_vector[i] = 0.0;
         }
 
-        for (var i = this.knot_vector.length - (this.degree); i < this.knot_vector.length; ++i) {
-            this.knot_vector[i] = 1.0;
+        for (var i = this.u_knot_vector.length - (this.degree); i < this.u_knot_vector.length; ++i) {
+            this.u_knot_vector[i] = 1.0;
         }
 
         this.checkUpperEndConditions();
@@ -297,9 +299,9 @@ class Curve {
 
     checkUpperEndConditions() {
         var isOpen = true;
-        var lastVal = this.knot_vector[this.knot_vector.length - 1];
-        for (var i = this.knot_vector.length - 2; i >= this.knot_vector.length - (this.degree + 1); i--) {
-            if (this.knot_vector[i] != lastVal) {
+        var lastVal = this.u_knot_vector[this.u_knot_vector.length - 1];
+        for (var i = this.u_knot_vector.length - 2; i >= this.u_knot_vector.length - (this.degree + 1); i--) {
+            if (this.u_knot_vector[i] != lastVal) {
                 isOpen = false;
                 break;
             }
@@ -308,25 +310,25 @@ class Curve {
         if (isOpen) {
             let other = lastVal;
             /* Try to find the first value which doesn't equal the last */
-            for (var i = this.knot_vector.length - 1; i >= 0; --i) {
-                if (this.knot_vector[i] != lastVal) {
-                    other = this.knot_vector[i];
+            for (var i = this.u_knot_vector.length - 1; i >= 0; --i) {
+                if (this.u_knot_vector[i] != lastVal) {
+                    other = this.u_knot_vector[i];
                     break;
                 }
             }
 
-            this.knot_vector[this.knot_vector.length - 1] += .05;
-            for (var i = 0; i < this.knot_vector.length; ++i) {
-                this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
+            this.u_knot_vector[this.u_knot_vector.length - 1] += .05;
+            for (var i = 0; i < this.u_knot_vector.length; ++i) {
+                this.u_knot_vector[i] /= this.u_knot_vector[this.u_knot_vector.length - 1];
             }
             // /* If all knots were moved to the end */
             // if (other == lastVal) 
             // {
             // } else {
             //     /* Move all knots except the last whose value equals the last value */
-            //     for (var i = 0; i < this.knot_vector.length - 1; ++i) {
-            //         if (this.knot_vector[i] == lastVal) {
-            //             this.knot_vector[i] = (lastVal + other) / 2;
+            //     for (var i = 0; i < this.u_knot_vector.length - 1; ++i) {
+            //         if (this.u_knot_vector[i] == lastVal) {
+            //             this.u_knot_vector[i] = (lastVal + other) / 2;
             //         }
             //     }
             // }
@@ -366,7 +368,7 @@ class Curve {
         vec3.normalize(cright, cright);
         vec3.normalize(cup, cup);
 
-        let gl = Curve.gl;
+        let gl = BSpline.gl;
 
         if (!this.buffers) {
             this.buffers = {}
@@ -402,15 +404,15 @@ class Curve {
         let pos = [];
         let ctlDirection = []
         let controlPointColors = []
-        for (var i = 0; i < this.controlPoints.length / 3; ++i) {
+        for (var i = 0; i < this.controlPoints[0].length / 3; ++i) {
             let iprev = Math.max(i - 1, 0);
-            let inext = Math.min(i + 1, (this.controlPoints.length / 3) - 1);
-            next.push(this.controlPoints[inext * 3 + 0], this.controlPoints[inext * 3 + 1], this.controlPoints[inext * 3 + 2])
-            next.push(this.controlPoints[inext * 3 + 0], this.controlPoints[inext * 3 + 1], this.controlPoints[inext * 3 + 2])
-            prev.push(this.controlPoints[iprev * 3 + 0], this.controlPoints[iprev * 3 + 1], this.controlPoints[iprev * 3 + 2])
-            prev.push(this.controlPoints[iprev * 3 + 0], this.controlPoints[iprev * 3 + 1], this.controlPoints[iprev * 3 + 2])
-            pos.push(this.controlPoints[i * 3 + 0], this.controlPoints[i * 3 + 1], this.controlPoints[i * 3 + 2])
-            pos.push(this.controlPoints[i * 3 + 0], this.controlPoints[i * 3 + 1], this.controlPoints[i * 3 + 2])
+            let inext = Math.min(i + 1, (this.controlPoints[0].length / 3) - 1);
+            next.push(this.controlPoints[0][inext * 3 + 0], this.controlPoints[0][inext * 3 + 1], this.controlPoints[0][inext * 3 + 2])
+            next.push(this.controlPoints[0][inext * 3 + 0], this.controlPoints[0][inext * 3 + 1], this.controlPoints[0][inext * 3 + 2])
+            prev.push(this.controlPoints[0][iprev * 3 + 0], this.controlPoints[0][iprev * 3 + 1], this.controlPoints[0][iprev * 3 + 2])
+            prev.push(this.controlPoints[0][iprev * 3 + 0], this.controlPoints[0][iprev * 3 + 1], this.controlPoints[0][iprev * 3 + 2])
+            pos.push(this.controlPoints[0][i * 3 + 0], this.controlPoints[0][i * 3 + 1], this.controlPoints[0][i * 3 + 2])
+            pos.push(this.controlPoints[0][i * 3 + 0], this.controlPoints[0][i * 3 + 1], this.controlPoints[0][i * 3 + 2])
             controlPointColors.push(1.0, 1.0, 1.0, 1.0);
             controlPointColors.push(1.0, 1.0, 1.0, 1.0);
             controlPointColors.push(1.0, 1.0, 1.0, 1.0);
@@ -427,7 +429,7 @@ class Curve {
         let handlePointsDirection = [];
         let handlePointsIndices = [];
         let handlePointColors = [];
-        let temppts = this.controlPoints.slice();
+        let temppts = this.controlPoints[0].slice();
         if (this.temporaryPoint.length != 0) {
             temppts.push(this.temporaryPoint[0], this.temporaryPoint[1], this.temporaryPoint[2]);
         }
@@ -570,7 +572,7 @@ class Curve {
     getBSplinePoints() {
         let tValues = this.getTValues();
         let points = []
-        let n = (this.controlPoints.length / 3) - 1; // degree
+        let n = (this.controlPoints[0].length / 3) - 1; // degree
 
         /* for each point */
         for (let pi = 0; pi < this.numSamples; ++pi) {
@@ -580,7 +582,7 @@ class Curve {
             for (let i = 0; i <= 128; ++i) {
                 if (i > n) break;
                 let p_i = vec3.create()
-                vec3.set(p_i, this.controlPoints[i * 3], this.controlPoints[i * 3 + 1], this.controlPoints[i * 3 + 2])
+                vec3.set(p_i, this.controlPoints[0][i * 3], this.controlPoints[0][i * 3 + 1], this.controlPoints[0][i * 3 + 2])
                 let theta = this.bernstein(n, i, t);
                 vec3.scale(p_i, p_i, theta)
                 vec3.add(p, p, p_i);
@@ -626,9 +628,9 @@ class Curve {
     }
 
     getClickedHandle(ray) {
-        for (var i = 0; i < this.controlPoints.length / 3; ++i) {
+        for (var i = 0; i < this.controlPoints[0].length / 3; ++i) {
             /* Ray sphere intersection here... */
-            let result = this.intersectSphere(ray.pos, ray.dir, [this.controlPoints[3 * i + 0], this.controlPoints[3 * i + 1], this.controlPoints[3 * i + 2]], this.handleRadius * 1.5);
+            let result = this.intersectSphere(ray.pos, ray.dir, [this.controlPoints[0][3 * i + 0], this.controlPoints[0][3 * i + 1], this.controlPoints[0][3 * i + 2]], this.handleRadius * 1.5);
             if (result == true)
                 return i;
         }
@@ -638,11 +640,11 @@ class Curve {
     getSnapPosition(x, y, selectedIsCurrent, currentHandle, snapToX, snapToY) {
         if ((snapToX == false) && (snapToY == false)) return -1;
 
-        for (var i = 0; i < this.controlPoints.length / 3; ++i) {
+        for (var i = 0; i < this.controlPoints[0].length / 3; ++i) {
             if (selectedIsCurrent && currentHandle == i) continue;
 
-            var deltaX = x - this.controlPoints[3 * i + 0];
-            var deltaY = y - this.controlPoints[3 * i + 1];
+            var deltaX = x - this.controlPoints[0][3 * i + 0];
+            var deltaY = y - this.controlPoints[0][3 * i + 1];
 
             if (snapToX && !snapToY) {
                 if (Math.abs(deltaX) * .9 < (this.handleRadius))
@@ -664,14 +666,14 @@ class Curve {
     }
 
     moveHandle(handleIdx, pos) {
-        this.controlPoints[3 * handleIdx + 0] = pos[0];
-        this.controlPoints[3 * handleIdx + 1] = pos[1];
-        this.controlPoints[3 * handleIdx + 2] = pos[2];
+        this.controlPoints[0][3 * handleIdx + 0] = pos[0];
+        this.controlPoints[0][3 * handleIdx + 1] = pos[1];
+        this.controlPoints[0][3 * handleIdx + 2] = pos[2];
     }
 
     removeHandle(handleIdx) {
-        this.controlPoints.splice(handleIdx * 3, 3);
-        this.knot_vector.splice(handleIdx, 1);
+        this.controlPoints[0].splice(handleIdx * 3, 3);
+        this.u_knot_vector.splice(handleIdx, 1);
         this.selectedHandle = -1;
         if (this.getOrder() > this.getNumCtlPoints() ) {
             this.setDegree(this.getDegree() - 1);
@@ -709,7 +711,7 @@ class Curve {
             vec3.scale(insertionPos, insertionPos, distance);
             vec3.add(insertionPos, insertionPos, ray.pos);
             insertion.pos = insertionPos;
-            insertion.idx = this.controlPoints.length / 3;
+            insertion.idx = this.controlPoints[0].length / 3;
             insertion.knot = 1.5;
         }
 
@@ -735,7 +737,7 @@ class Curve {
             vec4.scale(screenPoint, screenPoint, 1.0/screenPoint[3])
 
             /* For each control point */
-            for (var i = 0; i < (this.controlPoints.length / 3 - 1); ++i) {
+            for (var i = 0; i < (this.controlPoints[0].length / 3 - 1); ++i) {
                 
                 /* Project the control points */
                 var v = this.getHandlePos(i);
@@ -812,8 +814,8 @@ class Curve {
 
             // if (closest != -1) {
 
-            //     this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
-            //     let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
+            //     this.controlPoints[0].splice((closest + 1) * 3, 0, x, y, 0.0);
+            //     let t = (this.u_knot_vector[closest] + this.u_knot_vector[closest + 1]) / 2.0;
             //     insertion.knot = t;
             // }
         }
@@ -827,19 +829,19 @@ class Curve {
         let knot = insertion_data.knot;
         let idx = insertion_data.idx;
         
-        this.controlPoints.splice(idx * 3, 0, pos[0], pos[1], pos[2]);
-        this.knot_vector.splice(idx, 0, knot);
+        this.controlPoints[0].splice(idx * 3, 0, pos[0], pos[1], pos[2]);
+        this.u_knot_vector.splice(idx, 0, knot);
         
         // var p = vec2.create()
         // vec2.set(p, x, y);
         // else {
         //     var closest = -1;
         //     var closestDistance = Number.MAX_VALUE;
-        //     for (var i = 0; i < (this.controlPoints.length / 3 - 1); ++i) {
+        //     for (var i = 0; i < (this.controlPoints[0].length / 3 - 1); ++i) {
         //         var v = vec2.create()
         //         var w = vec2.create()
-        //         vec2.set(v, this.controlPoints[i * 3 + 0], this.controlPoints[i * 3 + 1])
-        //         vec2.set(w, this.controlPoints[(i + 1) * 3 + 0], this.controlPoints[(i + 1) * 3 + 1])
+        //         vec2.set(v, this.controlPoints[0][i * 3 + 0], this.controlPoints[0][i * 3 + 1])
+        //         vec2.set(w, this.controlPoints[0][(i + 1) * 3 + 0], this.controlPoints[0][(i + 1) * 3 + 1])
         //         var distance = this.distToSegment(p, v, w);
 
         //         if (distance < closestDistance) {
@@ -850,41 +852,41 @@ class Curve {
 
         //     if (closest == 0) {
         //         var end = vec2.create();
-        //         vec2.set(end, this.controlPoints[0], this.controlPoints[1])
+        //         vec2.set(end, this.controlPoints[0][0], this.controlPoints[0][1])
         //         var distanceToEnd = vec2.distance(p, end);
         //         if (distanceToEnd <= closestDistance) {
-        //             this.controlPoints.unshift(x, y, 0.0);
-        //             this.knot_vector.unshift(0.0);
-        //             for (var i = 1; i < this.knot_vector.length; ++i) {
-        //                 this.knot_vector[i] += .1;
+        //             this.controlPoints[0].unshift(x, y, 0.0);
+        //             this.u_knot_vector.unshift(0.0);
+        //             for (var i = 1; i < this.u_knot_vector.length; ++i) {
+        //                 this.u_knot_vector[i] += .1;
         //             }
-        //             for (var i = 0; i < this.knot_vector.length; ++i) {
-        //                 this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
+        //             for (var i = 0; i < this.u_knot_vector.length; ++i) {
+        //                 this.u_knot_vector[i] /= this.u_knot_vector[this.u_knot_vector.length - 1];
         //             }
         //         } else {
-        //             this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
-        //             let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
-        //             this.knot_vector.splice((closest + 1), 0, t);
+        //             this.controlPoints[0].splice((closest + 1) * 3, 0, x, y, 0.0);
+        //             let t = (this.u_knot_vector[closest] + this.u_knot_vector[closest + 1]) / 2.0;
+        //             this.u_knot_vector.splice((closest + 1), 0, t);
         //         }
-        //     } else if (closest == ((this.controlPoints.length / 3) - 2)) {
+        //     } else if (closest == ((this.controlPoints[0].length / 3) - 2)) {
         //         var end = vec2.create();
-        //         vec2.set(end, this.controlPoints[this.controlPoints.length - 3], this.controlPoints[this.controlPoints.length - 2])
+        //         vec2.set(end, this.controlPoints[0][this.controlPoints[0].length - 3], this.controlPoints[0][this.controlPoints[0].length - 2])
         //         var distanceToEnd = vec2.distance(p, end);
         //         if (distanceToEnd <= closestDistance) {
-        //             this.controlPoints.push(x, y, 0.0);
-        //             this.knot_vector.push(1. + (1.0 / (this.knot_vector.length - 1)));
-        //             for (var i = 0; i < this.knot_vector.length; ++i) {
-        //                 this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
+        //             this.controlPoints[0].push(x, y, 0.0);
+        //             this.u_knot_vector.push(1. + (1.0 / (this.u_knot_vector.length - 1)));
+        //             for (var i = 0; i < this.u_knot_vector.length; ++i) {
+        //                 this.u_knot_vector[i] /= this.u_knot_vector[this.u_knot_vector.length - 1];
         //             }
         //         } else {
-        //             this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
-        //             let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
-        //             this.knot_vector.splice(closest + 1, 0, t);
+        //             this.controlPoints[0].splice((closest + 1) * 3, 0, x, y, 0.0);
+        //             let t = (this.u_knot_vector[closest] + this.u_knot_vector[closest + 1]) / 2.0;
+        //             this.u_knot_vector.splice(closest + 1, 0, t);
         //         }
         //     } else {
-        //         this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
-        //         let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
-        //         this.knot_vector.splice(closest + 1, 0, t);
+        //         this.controlPoints[0].splice((closest + 1) * 3, 0, x, y, 0.0);
+        //         let t = (this.u_knot_vector[closest] + this.u_knot_vector[closest + 1]) / 2.0;
+        //         this.u_knot_vector.splice(closest + 1, 0, t);
         //     }
         // }
 
@@ -903,21 +905,21 @@ class Curve {
 
     getHandlePos(index) {
         let pos = vec4.create();
-        vec4.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2], 1.0);
+        vec4.set(pos, this.controlPoints[0][index * 3 + 0], this.controlPoints[0][index * 3 + 1], this.controlPoints[0][index * 3 + 2], 1.0);
         return pos;
     }
 
     getBackHandlePos() {
         let pos = vec4.create();
-        let index = (this.controlPoints.length / 3) - 1;
-        vec4.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2], 1.0);
+        let index = (this.controlPoints[0].length / 3) - 1;
+        vec4.set(pos, this.controlPoints[0][index * 3 + 0], this.controlPoints[0][index * 3 + 1], this.controlPoints[0][index * 3 + 2], 1.0);
         return pos;
     }
 
     getFrontHandlePos() {
         let pos = vec4.create();
         let index = 0;
-        vec4.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2], 1.0);
+        vec4.set(pos, this.controlPoints[0][index * 3 + 0], this.controlPoints[0][index * 3 + 1], this.controlPoints[0][index * 3 + 2], 1.0);
         return pos;
     }
 
@@ -931,12 +933,12 @@ class Curve {
         return result;
     }
 
-    drawCurve(projection, modelView, aspect, time) {
-        let gl = Curve.gl;
-        if (!Curve.BSplineShaderProgram) return;
+    drawBSpline(projection, modelView, aspect, time) {
+        let gl = BSpline.gl;
+        if (!BSpline.BSplineShaderProgram) return;
 
         /* K is the knot interval containing x. It starts at degree, and ends at the last interval of the knot. */
-        for (var k = this.degree; k < this.knot_vector.length; ++k) {
+        for (var k = this.degree; k < this.u_knot_vector.length; ++k) {
             // t values
             {
                 const numComponents = 1;
@@ -946,14 +948,14 @@ class Curve {
                 const offset = 0;
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.t);
                 gl.vertexAttribPointer(
-                    Curve.BSplineProgramInfo.attribLocations.t,
+                    BSpline.BSplineProgramInfo.attribLocations.t,
                     numComponents,
                     type,
                     normalize,
                     stride,
                     offset);
                 gl.enableVertexAttribArray(
-                    Curve.BSplineProgramInfo.attribLocations.t);
+                    BSpline.BSplineProgramInfo.attribLocations.t);
             }
 
             // direction
@@ -965,55 +967,55 @@ class Curve {
                 const offset = 0;
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.tDirection);
                 gl.vertexAttribPointer(
-                    Curve.BSplineProgramInfo.attribLocations.direction,
+                    BSpline.BSplineProgramInfo.attribLocations.direction,
                     numComponents,
                     type,
                     normalize,
                     stride,
                     offset);
                 gl.enableVertexAttribArray(
-                    Curve.BSplineProgramInfo.attribLocations.direction);
+                    BSpline.BSplineProgramInfo.attribLocations.direction);
             }
 
 
             // Tell WebGL to use our program when drawing
-            gl.useProgram(Curve.BSplineProgramInfo.program);
+            gl.useProgram(BSpline.BSplineProgramInfo.program);
 
             // Set the shader uniforms
             gl.uniformMatrix4fv(
-                Curve.BSplineProgramInfo.uniformLocations.projection,
+                BSpline.BSplineProgramInfo.uniformLocations.projection,
                 false,
                 projection);
 
             gl.uniformMatrix4fv(
-                Curve.BSplineProgramInfo.uniformLocations.modelView,
+                BSpline.BSplineProgramInfo.uniformLocations.modelView,
                 false,
                 modelView);
 
             gl.uniform1f(
-                Curve.BSplineProgramInfo.uniformLocations.thickness,
+                BSpline.BSplineProgramInfo.uniformLocations.thickness,
                 this.thickness);
 
             gl.uniform1f(
-                Curve.BSplineProgramInfo.uniformLocations.aspect,
+                BSpline.BSplineProgramInfo.uniformLocations.aspect,
                 aspect);
 
             gl.uniform1i(
-                Curve.BSplineProgramInfo.uniformLocations.miter,
+                BSpline.BSplineProgramInfo.uniformLocations.miter,
                 0);
 
             gl.uniform1i(
-                Curve.BSplineProgramInfo.uniformLocations.knotIndex,
+                BSpline.BSplineProgramInfo.uniformLocations.knotIndex,
                 k); // I think this goes from degree to n - degree
 
             gl.uniform1i(
-                Curve.BSplineProgramInfo.uniformLocations.degree,
+                BSpline.BSplineProgramInfo.uniformLocations.degree,
                 this.degree);
 
             // /* extract knot interval */
             // let knotInterval = [];
-            // knotInterval.push(this.knot_vector[k])
-            // knotInterval.push(this.knot_vector[k+1])
+            // knotInterval.push(this.u_knot_vector[k])
+            // knotInterval.push(this.u_knot_vector[k+1])
 
             // for (var j = 0; j < this.degree; ++j) {
             //     knotInterval.unshift(knotInterval[0]);
@@ -1024,18 +1026,18 @@ class Curve {
             // }
 
             gl.uniform1fv(
-                Curve.BSplineProgramInfo.uniformLocations.knotVector,
-                new Float32Array(this.knot_vector)
+                BSpline.BSplineProgramInfo.uniformLocations.knotVector,
+                new Float32Array(this.u_knot_vector)
             );
 
             /* Values of X range from t_x to t_k+1 */
             gl.uniform1f(
-                Curve.BSplineProgramInfo.uniformLocations.tmin,
-                this.knot_vector[k]);
+                BSpline.BSplineProgramInfo.uniformLocations.tmin,
+                this.u_knot_vector[k]);
 
             gl.uniform1f(
-                Curve.BSplineProgramInfo.uniformLocations.tmax,
-                this.knot_vector[k + 1]);
+                BSpline.BSplineProgramInfo.uniformLocations.tmax,
+                this.u_knot_vector[k + 1]);
 
 
 
@@ -1048,19 +1050,19 @@ class Curve {
             for (var j = 0; j <= this.degree; ++j) {
                 let idx = j + k - this.degree;
                 tCtlPts.push(
-                    this.controlPoints[3 * idx + 0],
-                    this.controlPoints[3 * idx + 1],
-                    this.controlPoints[3 * idx + 2],
+                    this.controlPoints[0][3 * idx + 0],
+                    this.controlPoints[0][3 * idx + 1],
+                    this.controlPoints[0][3 * idx + 2],
                 )
             }
 
             gl.uniform3fv(
-                Curve.BSplineProgramInfo.uniformLocations.controlPoints,
+                BSpline.BSplineProgramInfo.uniformLocations.controlPoints,
                 new Float32Array(tCtlPts));
 
             /* The temporary control point count is degree + 1 */
             gl.uniform1i(
-                Curve.BSplineProgramInfo.uniformLocations.numControlPoints,
+                BSpline.BSplineProgramInfo.uniformLocations.numControlPoints,
                 this.degree + 1);
 
             {
@@ -1075,9 +1077,9 @@ class Curve {
     }
 
     drawControlPoints(projection, modelView, aspect, time) {
-        let gl = Curve.gl;
+        let gl = BSpline.gl;
 
-        if (!Curve.LineShaderProgram) return;
+        if (!BSpline.LineShaderProgram) return;
 
         // position values
         {
@@ -1088,14 +1090,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.handlePointsPosition);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.position,
+                BSpline.LineProgramInfo.attribLocations.position,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.position);
+                BSpline.LineProgramInfo.attribLocations.position);
         }
 
         // previous values
@@ -1107,14 +1109,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.handlePointsPrevious);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.previous,
+                BSpline.LineProgramInfo.attribLocations.previous,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.previous);
+                BSpline.LineProgramInfo.attribLocations.previous);
         }
 
         // next values
@@ -1126,14 +1128,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.handlePointsNext);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.next,
+                BSpline.LineProgramInfo.attribLocations.next,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.next);
+                BSpline.LineProgramInfo.attribLocations.next);
         }
 
         // direction
@@ -1145,14 +1147,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.handlePointsDirection);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.direction,
+                BSpline.LineProgramInfo.attribLocations.direction,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.direction);
+                BSpline.LineProgramInfo.attribLocations.direction);
         }
 
         // color values
@@ -1164,49 +1166,49 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.handlePointsColors);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.color,
+                BSpline.LineProgramInfo.attribLocations.color,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.color);
+                BSpline.LineProgramInfo.attribLocations.color);
         }
 
 
         // Tell WebGL to use our program when drawing
-        gl.useProgram(Curve.LineProgramInfo.program);
+        gl.useProgram(BSpline.LineProgramInfo.program);
 
         // Set the shader uniforms
         gl.uniformMatrix4fv(
-            Curve.LineProgramInfo.uniformLocations.projection,
+            BSpline.LineProgramInfo.uniformLocations.projection,
             false,
             projection);
 
         gl.uniformMatrix4fv(
-            Curve.LineProgramInfo.uniformLocations.modelView,
+            BSpline.LineProgramInfo.uniformLocations.modelView,
             false,
             modelView);
 
         gl.uniform1f(
-            Curve.LineProgramInfo.uniformLocations.thickness,
+            BSpline.LineProgramInfo.uniformLocations.thickness,
             this.handleThickness);
 
         gl.uniform1f(
-            Curve.LineProgramInfo.uniformLocations.aspect,
+            BSpline.LineProgramInfo.uniformLocations.aspect,
             aspect);
 
         gl.uniform1i(
-            Curve.LineProgramInfo.uniformLocations.miter,
+            BSpline.LineProgramInfo.uniformLocations.miter,
             0);
 
         gl.uniform4fv(
-            Curve.LineProgramInfo.uniformLocations.color,
+            BSpline.LineProgramInfo.uniformLocations.color,
             this.selected ? this.selectedColor : this.deselectedColor);
 
         {
-            const vertexCount = (this.handleSamples * 6) * ((this.controlPoints.length + this.temporaryPoint.length) / 3);
+            const vertexCount = (this.handleSamples * 6) * ((this.controlPoints[0].length + this.temporaryPoint.length) / 3);
             const type = gl.UNSIGNED_SHORT;
             const offset = 0;
             // gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
@@ -1216,9 +1218,9 @@ class Curve {
     }
 
     drawControlPolygon(projection, modelView, aspect, time) {
-        let gl = Curve.gl;
+        let gl = BSpline.gl;
 
-        if (!Curve.LineShaderProgram) return;
+        if (!BSpline.LineShaderProgram) return;
 
         // position values
         {
@@ -1229,14 +1231,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.controlPointsPosition);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.position,
+                BSpline.LineProgramInfo.attribLocations.position,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.position);
+                BSpline.LineProgramInfo.attribLocations.position);
         }
 
         // previous values
@@ -1248,14 +1250,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.controlPointsPrevious);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.previous,
+                BSpline.LineProgramInfo.attribLocations.previous,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.previous);
+                BSpline.LineProgramInfo.attribLocations.previous);
         }
 
         // next values
@@ -1267,14 +1269,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.controlPointsNext);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.next,
+                BSpline.LineProgramInfo.attribLocations.next,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.next);
+                BSpline.LineProgramInfo.attribLocations.next);
         }
 
         // direction
@@ -1286,14 +1288,14 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.controlPointsDirection);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.direction,
+                BSpline.LineProgramInfo.attribLocations.direction,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.direction);
+                BSpline.LineProgramInfo.attribLocations.direction);
         }
 
         // color values
@@ -1305,56 +1307,56 @@ class Curve {
             const offset = 0;
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.controlPointsColors);
             gl.vertexAttribPointer(
-                Curve.LineProgramInfo.attribLocations.color,
+                BSpline.LineProgramInfo.attribLocations.color,
                 numComponents,
                 type,
                 normalize,
                 stride,
                 offset);
             gl.enableVertexAttribArray(
-                Curve.LineProgramInfo.attribLocations.color);
+                BSpline.LineProgramInfo.attribLocations.color);
         }
 
 
         // Tell WebGL to use our program when drawing
-        gl.useProgram(Curve.LineProgramInfo.program);
+        gl.useProgram(BSpline.LineProgramInfo.program);
 
         // Set the shader uniforms
         gl.uniformMatrix4fv(
-            Curve.LineProgramInfo.uniformLocations.projection,
+            BSpline.LineProgramInfo.uniformLocations.projection,
             false,
             projection);
 
         gl.uniformMatrix4fv(
-            Curve.LineProgramInfo.uniformLocations.modelView,
+            BSpline.LineProgramInfo.uniformLocations.modelView,
             false,
             modelView);
 
         gl.uniform1f(
-            Curve.LineProgramInfo.uniformLocations.thickness,
+            BSpline.LineProgramInfo.uniformLocations.thickness,
             this.handleThickness * .5);
 
         gl.uniform1f(
-            Curve.LineProgramInfo.uniformLocations.aspect,
+            BSpline.LineProgramInfo.uniformLocations.aspect,
             aspect);
 
         gl.uniform1i(
-            Curve.LineProgramInfo.uniformLocations.miter,
+            BSpline.LineProgramInfo.uniformLocations.miter,
             1);
 
         
         gl.uniform4fv(
-            Curve.LineProgramInfo.uniformLocations.color,
+            BSpline.LineProgramInfo.uniformLocations.color,
             this.selected ? [-0.4, -0.4, -0.4, 0] : [-0.7, -0.7, -0.7, 0.0]);
 
         {
-            const vertexCount = (this.controlPoints.length / 3) * 2;
+            const vertexCount = (this.controlPoints[0].length / 3) * 2;
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
         }
     }
 
     draw(projection, viewMatrix, aspect, time) {
-        var gl = Curve.gl;
+        var gl = BSpline.gl;
 
         this.updateBuffers(projection, viewMatrix, aspect, time);
         if (this.showControlPolygon) {
@@ -1365,10 +1367,10 @@ class Curve {
             this.drawControlPoints(projection, viewMatrix, aspect, time);
         }
 
-        if (this.showCurve) {
-            this.drawCurve(projection, viewMatrix, aspect, time);
+        if (this.showBSpline) {
+            this.drawBSpline(projection, viewMatrix, aspect, time);
         }
     }
 }
 
-export { Curve }
+export { BSpline }

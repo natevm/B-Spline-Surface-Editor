@@ -1,6 +1,6 @@
 import { BSplineEditor } from "./BSplineEditor.js"
 import { KnotEditor } from "./KnotEditor.js"
-import { Curve } from "./Curve.js"
+import { BSpline } from "./BSpline.js"
 
 let bsplineEditor;
 let knotEditor;
@@ -64,7 +64,7 @@ angular
             printLayout: true,
             showControlPolygon: true,
             showControlHandles: true,
-            showCurve: true,
+            showBSpline: true,
             minzoom: 1,
             maxzoom: 1000,
             zoom: 400,
@@ -111,62 +111,6 @@ angular
                 }
             }
 
-            // var UploadBezierFileButton = document.getElementById("UploadBezierFile");
-            // UploadBezierFileButton.addEventListener("change", (e) => {
-            //     var selectedFile = event.target.files[0];
-            //     var filename = event.target.files[0].name;
-            //     var reader = new FileReader();
-            //     reader.onload = (event) => {
-            //         var lines = event.target.result.split("\n");
-            //         lines = cleanArray(lines)
-            //         var numCurves = parseInt(lines[0], 10);
-            //         assert(numCurves >= 0, "Number of curves must be greater than or equal to zero! (P >= 0)")
-            //         lines = lines.splice(1)
-        
-            //         var curves = [];
-            //         var lineIdx = 0;
-            //         for (var i = 0; i < numCurves; ++i) {
-            //             curves[i] = new Curve();
-            //             var numPoints = -1;
-            //             /* remove the P, get total points in first line */
-            //             lines[lineIdx] = lines[lineIdx].substring(1)
-            //             lines[lineIdx] = lines[lineIdx].trim()
-            //             numPoints = parseInt(lines[lineIdx])
-            //             lines = lines.splice(1)
-        
-            //             console.log("new curve")
-            //             curves[i].controlPoints = []
-            //             for (var j = 0; j < numPoints; ++j) {
-            //                 var separators = [' ', '\t'];
-            //                 var strArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
-            //                 strArray = cleanArray(strArray)
-            //                 assert(strArray.length == 3);
-            //                 var x = parseFloat(strArray[0])
-            //                 var y = parseFloat(strArray[1])
-            //                 var z = parseFloat(strArray[2])
-            //                 console.log("x: " + x + " y: " + y + " z: " + z);
-            //                 lines = lines.splice(1)
-            //                 if (numPoints < 100 || j % 2 == 0) {
-            //                     curves[i].controlPoints.push(x, y, z)
-            //                 }
-            //             }
-            //             curves[i].setDegree(numPoints - 1);
-        
-            //             if (filename.endsWith(".crv")) {
-            //                 curves[i].showCurve = false;
-            //                 curves[i].showControlPolygon = true;
-            //                 curves[i].showControlPoints = false;
-            //             }
-            //             bsplineEditor.curves.push(curves[i])
-            //         }
-            //         console.log(lines);
-            //         bsplineEditor.backup();
-            //         bsplineEditor.selectedCurve = 0; // TEMPORARY
-            //     }
-            //     reader.readAsText(selectedFile);
-            // });
-        
-        
             var UploadBSplineFileButton = document.getElementById("UploadBSplineFile");
             UploadBSplineFileButton.addEventListener("change", (e) => {
                 var selectedFile = event.target.files[0];
@@ -175,13 +119,13 @@ angular
                 reader.onload = (event) => {
                     var lines = event.target.result.split("\n");
                     lines = cleanArray(lines)
-                    var numCurves = parseInt(lines[0], 10);
-                    assert(numCurves >= 0, "Number of curves must be greater than or equal to zero! (P >= 0)")
+                    var numBSplines = parseInt(lines[0], 10);
+                    assert(numBSplines >= 0, "Number of splines must be greater than or equal to zero! (P >= 0)")
                     lines = lines.splice(1)
         
-                    var curves = [];
-                    for (var i = 0; i < numCurves; ++i) {
-                        curves[i] = new Curve();
+                    var splines = [];
+                    for (var i = 0; i < numBSplines; ++i) {
+                        splines[i] = new BSpline();
                         var numPoints = -1;
                         var degree = -1;
         
@@ -198,7 +142,7 @@ angular
                         console.log("new curve")
         
                         /* Parse control points */
-                        curves[i].controlPoints = []
+                        splines[i].controlPoints = [[]]
                         for (var j = 0; j < numPoints; ++j) {
                             var separators = [' ', '\t'];
                             var strArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
@@ -210,11 +154,11 @@ angular
                             console.log("x: " + x + " y: " + y + " z: " + z);
                             lines = lines.splice(1)
                             if (numPoints < 100 || j % 2 == 0) {
-                                curves[i].controlPoints.push(x, y, z)
+                                splines[i].controlPoints[0].push(x, y, z)
                             }
                         }
         
-                        curves[i].setDegree(degree);
+                        splines[i].setDegree(degree);
         
                         /* Parse knot */
                         var knotProvided = 0;
@@ -226,11 +170,11 @@ angular
                         }
         
                         if (knotProvided == 0) {
-                            curves[i].setOpen(true);
-                            curves[i].setUniformity(true);
+                            splines[i].setOpen(true);
+                            splines[i].setUniformity(true);
                         } else {
-                            curves[i].setOpen(false);
-                            curves[i].setUniformity(false);
+                            splines[i].setOpen(false);
+                            splines[i].setUniformity(false);
                             var separators = [' ', '\t'];
                             var strArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
                             strArray = cleanArray(strArray)
@@ -245,21 +189,21 @@ angular
                                 knot[j] -= min;
                                 knot[j] /= (max - min);
                             }
-                            curves[i].knot_vector = knot;
+                            splines[i].knot_vector = knot;
                             lines = lines.splice(1)
                         }
         
         
                         if (filename.endsWith(".crv")) {
-                            curves[i].showCurve = false;
-                            curves[i].showControlPolygon = true;
-                            curves[i].showControlPoints = false;
+                            splines[i].showBSpline = false;
+                            splines[i].showControlPolygon = true;
+                            splines[i].showControlPoints = false;
                         }
-                        bsplineEditor.curves.push(curves[i])
+                        bsplineEditor.splines.push(splines[i])
                     }
                     console.log(lines);
                     bsplineEditor.backup();
-                    bsplineEditor.selectedCurve = 0; // TEMPORARY
+                    bsplineEditor.selectedBSpline = 0; // TEMPORARY
 
                 }
                 reader.readAsText(selectedFile);
@@ -295,7 +239,7 @@ angular
         $scope.updateVisibility = function (ev) {
             bsplineEditor.setControlPolygonVisibility($scope.settings.showControlPolygon);
             bsplineEditor.setControlHandleVisibility($scope.settings.showControlHandles);
-            bsplineEditor.setCurveVisibility($scope.settings.showCurve);
+            bsplineEditor.setBSplineVisibility($scope.settings.showBSpline);
 
             $mdToast.show(
                 $mdToast.simple()
@@ -305,19 +249,19 @@ angular
             );
         };
 
-        $scope.addCurve = function (ev) {
+        $scope.addBSpline = function (ev) {
             console.log(ev);
-            bsplineEditor.newCurve()
+            bsplineEditor.newBSpline()
             $mdToast.show(
                 $mdToast.simple()
-                    .textContent('Curve added.')
+                    .textContent('BSpline added.')
                     .position('bottom right')
                     .hideDelay(3000)
             );
         };
 
-        $scope.deleteCurve = function (ev) {
-            if (bsplineEditor.getSelectedCurve() == -1) {
+        $scope.deleteBSpline = function (ev) {
+            if (bsplineEditor.getSelectedBSpline() == -1) {
                 $mdToast.show(
                     $mdToast.simple()
                         .textContent('Error: no curve selected.')
@@ -327,11 +271,11 @@ angular
                 return;
             }
 
-            bsplineEditor.deleteLastCurve();
+            bsplineEditor.deleteLastBSpline();
         };
 
         $scope.deleteLastHandle = function (ev) {
-            if (bsplineEditor.getSelectedCurve() == -1) {
+            if (bsplineEditor.getSelectedBSpline() == -1) {
                 $mdToast.show(
                     $mdToast.simple()
                         .textContent('Error: no handle selected.')
@@ -442,24 +386,24 @@ angular
                 }
             }
 
-            var text = "# Number of curves: \n"
-            text += bsplineEditor.curves.length + "\n"
-            for (var i = 0; i < bsplineEditor.curves.length; ++i) {
-                text += "\n# Curve " + i + "\n";
+            var text = "# Number of splines: \n"
+            text += bsplineEditor.splines.length + "\n"
+            for (var i = 0; i < bsplineEditor.splines.length; ++i) {
+                text += "\n# BSpline " + i + "\n";
                 text += "# Degree: \n";
-                text += bsplineEditor.curves[i].getDegree() + "\n";
+                text += bsplineEditor.splines[i].getDegree() + "\n";
                 text += "# Number of control points: \n";
-                text += bsplineEditor.curves[i].getNumCtlPoints() + "\n";
+                text += bsplineEditor.splines[i].getNumCtlPoints() + "\n";
                 text += "# Control point data: \n";
-                for (var j = 0; j < bsplineEditor.curves[i].getNumCtlPoints(); ++j) {
-                    text += bsplineEditor.curves[i].controlPoints[j * 3 + 0] + "    ";
-                    text += bsplineEditor.curves[i].controlPoints[j * 3 + 1] + "\n"
+                for (var j = 0; j < bsplineEditor.splines[i].getNumCtlPoints(); ++j) {
+                    text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 0] + "    ";
+                    text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 1] + "\n"
                 }
                 text += "# Knot present: \n";
                 text += "1 \n";
                 text += "# Knot data: \n";
-                for (var j = 0; j < bsplineEditor.curves[i].knot_vector.length; ++j) {
-                    text += bsplineEditor.curves[i].knot_vector[j] + " ";
+                for (var j = 0; j < bsplineEditor.splines[i].knot_vector.length; ++j) {
+                    text += bsplineEditor.splines[i].knot_vector[j] + " ";
                 }
                 text += "\n";
             }
@@ -544,7 +488,7 @@ angular
         };
 
         $scope.openBottomSheet = function (ev) {
-            if (bsplineEditor.getSelectedCurve() == -1) {
+            if (bsplineEditor.getSelectedBSpline() == -1) {
                 $mdToast.show(
                     $mdToast.simple()
                         .textContent('Select a curve first.')
@@ -585,16 +529,16 @@ angular
     })
     .controller('KnotEditorCtrl', function ($scope, $mdToast, $mdBottomSheet, $timeout, $mdDialog) {
         $scope.data = {
-            curve: bsplineEditor.getSelectedCurve(),
-            degree: bsplineEditor.getSelectedCurve().getDegree(),
+            curve: bsplineEditor.getSelectedBSpline(),
+            degree: bsplineEditor.getSelectedBSpline().getDegree(),
             minDegree: 1,
             maxDegree: bsplineEditor.getNumCtlPointsOfSelected() - 1,
-            makeOpen: bsplineEditor.getSelectedCurve().isOpen,
-            makeUniform: bsplineEditor.getSelectedCurve().isUniform
+            makeOpen: bsplineEditor.getSelectedBSpline().isOpen,
+            makeUniform: bsplineEditor.getSelectedBSpline().isUniform
         };
         $timeout(function () {
             knotEditor.initializeWebGL();
-            knotEditor.setCurve($scope.data.curve);
+            knotEditor.setBSpline($scope.data.curve);
             knotEditor.updateBasisFunctions();
             bsplineEditor.backup();
         });
