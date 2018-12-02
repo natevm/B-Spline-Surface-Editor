@@ -194,7 +194,7 @@ class Curve {
         this.numSamples = 3 * this.degree + 20;
 
         this.updateConstraints();
-        this.updateBuffers();
+        // this.updateBuffers();
     }
 
     toJSON() {
@@ -348,7 +348,24 @@ class Curve {
         return this.degree + 1;
     }
 
-    updateBuffers() {
+    updateBuffers(projection, viewMatrix, aspect, time) {
+
+        let invV = mat4.create();
+        mat4.invert(invV, viewMatrix);
+
+        let cpos = vec3.create();
+        let cright = vec3.create();
+        let cup = vec3.create();
+        let cforward = vec3.create();
+
+        vec3.set(cright, invV[0], invV[1], invV[2]);
+        vec3.set(cup, invV[4], invV[5], invV[6]);
+        vec3.set(cforward, invV[8], invV[9], invV[10]);
+        vec3.set(cpos, invV[12], invV[13], invV[14]);
+
+        vec3.normalize(cright, cright);
+        vec3.normalize(cup, cup);
+
         let gl = Curve.gl;
 
         if (!this.buffers) {
@@ -428,17 +445,62 @@ class Curve {
                     rad *= 1.2;
                 }
 
-                handlePointsPrev.push(temppts[i * 3 + 0] + Math.cos(degreePrev) * rad, temppts[i * 3 + 1] + Math.sin(degreePrev) * rad, temppts[i * 3 + 2]);
-                handlePointsPrev.push(temppts[i * 3 + 0] + Math.cos(degreePrev) * rad, temppts[i * 3 + 1] + Math.sin(degreePrev) * rad, temppts[i * 3 + 2]);
+                let handlePos = vec3.create();
+                if ((i == ((temppts.length / 3) - 1)) && (this.temporaryPoint.length != 0)) {
+                    handlePos = vec3.fromValues(this.temporaryPoint[0], this.temporaryPoint[1], this.temporaryPoint[2]);
+                } else {
+                    handlePos = this.getHandlePos(i);
+                }
+                let prevDelta = vec3.create();
+                let currDelta = vec3.create();
+                let nextDelta = vec3.create();
+                let scaledRight = vec3.create();
+                let scaledUp = vec3.create();
 
-                handlePoints.push(temppts[i * 3 + 0] + Math.cos(degree) * rad, temppts[i * 3 + 1] + Math.sin(degree) * rad, temppts[i * 3 + 2]);
-                handlePoints.push(temppts[i * 3 + 0] + Math.cos(degree) * rad, temppts[i * 3 + 1] + Math.sin(degree) * rad, temppts[i * 3 + 2]);
+                scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
+                scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
+                vec3.scale(scaledRight, scaledRight, Math.cos(degreePrev) * rad);
+                vec3.scale(scaledUp, scaledUp, Math.sin(degreePrev) * rad);
+                vec3.add(prevDelta, scaledRight, scaledUp);
 
-                handlePointsNext.push(temppts[i * 3 + 0] + Math.cos(degreeNext) * rad, temppts[i * 3 + 1] + Math.sin(degreeNext) * rad, temppts[i * 3 + 2]);
-                handlePointsNext.push(temppts[i * 3 + 0] + Math.cos(degreeNext) * rad, temppts[i * 3 + 1] + Math.sin(degreeNext) * rad, temppts[i * 3 + 2]);
+                scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
+                scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
+                vec3.scale(scaledRight, scaledRight, Math.cos(degree) * rad);
+                vec3.scale(scaledUp, scaledUp, Math.sin(degree) * rad);
+                vec3.add(currDelta, scaledRight, scaledUp);
 
+                scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
+                scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
+                vec3.scale(scaledRight, scaledRight, Math.cos(degreeNext) * rad);
+                vec3.scale(scaledUp, scaledUp, Math.sin(degreeNext) * rad);
+                vec3.add(nextDelta, scaledRight, scaledUp);
+
+                // prevDelta[0] = Math.cos(degreePrev) * rad;
+                // prevDelta[1] = Math.sin(degreePrev) * rad;
+                // prevDelta[2] = 0.0;
+
+                // currDelta[0] = Math.cos(degree) * rad;
+                // currDelta[1] = Math.sin(degree) * rad;
+                // currDelta[2] = 0.0;
+
+                // nextDelta[0] = Math.cos(degree) * rad;
+                // nextDelta[1] = Math.sin(degree) * rad;
+                // nextDelta[2] = 0.0;
+
+                /* Positions */
+                handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
+                handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
+
+                handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
+                handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
+
+                handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
+                handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
+
+                /* Directions */
                 handlePointsDirection.push(-1, 1 * (this.selectedHandle == i) ? 4 : 1);
 
+                /* Colors */
                 if ((i == ((temppts.length / 3) - 1)) && (this.temporaryPoint.length != 0)) {
                     handlePointColors.push(this.temporaryPointColor[0], this.temporaryPointColor[1], this.temporaryPointColor[2], this.temporaryPointColor[3]);
                     handlePointColors.push(this.temporaryPointColor[0], this.temporaryPointColor[1], this.temporaryPointColor[2], this.temporaryPointColor[3]);
@@ -453,6 +515,7 @@ class Curve {
                     // handlePointColors.push(1.0, 1.0, 1.0, 1.0);
                 }
 
+                /* Indices */
                 if (j != this.handleSamples) {
                     let offset = 2 * (this.handleSamples + 1) * i; // 2 points per point. 6 floats per point. handleSamples + 1 points. 
                     // handlePointsIndices.push((handlePoints.length/3) -  j * 2 + (i * this.handleSamples + 1), j*2+1 + (i * this.handleSamples + 1));
@@ -629,76 +692,207 @@ class Curve {
     }
     distToSegment(p, v, w) { return Math.sqrt(this.distToSegmentSquared(p, v, w)); }
 
-    addHandle(x, y, z, addToFront = false, addToBack = false, addToClosest = true) {
-        var p = vec2.create()
-        vec2.set(p, x, y);
-
+    getInsertionLocation(ray, viewMatrix, projectionMatrix, addToFront = false, addToBack = false, addToClosest = true) {
+        let insertion = {
+            pos: [0,0,0], 
+            idx : 0,
+            knot: 0,
+            addToFront : addToFront,
+            addToBack: addToBack,
+            addToClosest: addToClosest
+        };        
+        
+        let insertionPos = vec3.create();
         if (addToBack) {
-            this.controlPoints.push(x, y, z)
-        } else if (addToFront) {
-            this.controlPoints.unshift(x, y, z);
+            let distance = vec3.dist(ray.pos, this.getBackHandlePos());
+            insertionPos = vec3.fromValues(ray.dir[0], ray.dir[1], ray.dir[2]);
+            vec3.scale(insertionPos, insertionPos, distance);
+            vec3.add(insertionPos, insertionPos, ray.pos);
+            insertion.pos = insertionPos;
+            insertion.idx = this.controlPoints.length / 3;
+            insertion.knot = 1.5;
         }
+
+        else if (addToFront) {
+            let distance = vec3.dist(ray.pos, this.getFrontHandlePos());
+            insertionPos = vec3.fromValues(ray.dir[0], ray.dir[1], ray.dir[2]);
+            vec3.scale(insertionPos, insertionPos, distance);
+            vec3.add(insertionPos, insertionPos, ray.pos);
+            insertion.pos = insertionPos;
+            insertion.idx = 0;
+            insertion.knot = -.5
+        }
+
         else {
             var closest = -1;
             var closestDistance = Number.MAX_VALUE;
+            let VP = mat4.create()
+            mat4.multiply(VP, projectionMatrix, viewMatrix);
+
+            let screenPoint = vec4.create();
+            vec4.add(screenPoint, [ray.pos[0], ray.pos[1], ray.pos[2], 1.0], [ray.dir[0], ray.dir[1], ray.dir[2], 0.0]);
+            vec4.transformMat4(screenPoint, screenPoint, VP);
+            vec4.scale(screenPoint, screenPoint, 1.0/screenPoint[3])
+
+            /* For each control point */
             for (var i = 0; i < (this.controlPoints.length / 3 - 1); ++i) {
-                var v = vec2.create()
-                var w = vec2.create()
-                vec2.set(v, this.controlPoints[i * 3 + 0], this.controlPoints[i * 3 + 1])
-                vec2.set(w, this.controlPoints[(i + 1) * 3 + 0], this.controlPoints[(i + 1) * 3 + 1])
-                var distance = this.distToSegment(p, v, w);
+                
+                /* Project the control points */
+                var v = this.getHandlePos(i);
+                var w = this.getHandlePos(i + 1);
+                vec4.transformMat4(v, v, VP);
+                vec4.transformMat4(w, w, VP);
+
+                vec4.scale(v, v, 1.0/v[3])
+                vec4.scale(w, w, 1.0/w[3])
+
+                /* Now get distance in screen space */
+                var distance = this.distToSegment([screenPoint[0], screenPoint[1]], [v[0], v[1]], [w[0], w[1]]);
 
                 if (distance < closestDistance) {
+
+                    /* Compute screen space vector along segment */
+                    let v1 = vec2.fromValues(v[0], v[1]);
+                    vec2.subtract(v1, v1, [ w[0], w[1]]);
+
+                    /* Compute screen space vector from w to clicked point */
+                    let v2 = vec2.fromValues(screenPoint[0], screenPoint[1]);
+                    vec2.subtract(v2, v2, [w[0], w[1]]);
+
+                    /* Compute dot between those, gives us projection of clicked onto segment */
+                    let dot = vec2.dot(v1, v2);
+                    let len = vec2.length(v1);
+
+                    /* Determine alpha by how far along that segment this projection lies. */
+                    let alpha = dot / len;
+
+                    /* Now use world space segment */
+                    var v_w = this.getHandlePos(i);
+                    var w_w = this.getHandlePos(i + 1);
+
+                    /* Interpolate between those world space locations using alpha */
+                    var interp = vec4.create();
+                    vec4.lerp(interp, v_w, w_w, 1.0 - alpha);
+
+                    /* Compute vector from camera pos to the interpolated point */
+                    let v3 = vec4.create();
+                    vec4.set(v3, ray.pos[0], ray.pos[1], ray.pos[2], 1.0);
+                    vec4.subtract(v3, interp, v3);
+
+                    /* Normalize that vector */
+                    let v4 = vec4.create();
+                    vec4.normalize(v4, v3);
+
+                    /* Compute normal vector along ray direction  */
+                    let v5 = vec4.create();
+                    vec4.set(v5, ray.dir[0], ray.dir[1], ray.dir[2], 0.0);
+                    vec4.normalize(v5, v5)
+
+                    /* Dot between normalized vectors tells us cos angle between them */
+
+                    let cosOfAngle = vec4.dot(v5, v4);
+
+                    /* Distance from the camera to the interpolated point */
+                    let distToInterpPoint = vec4.length(v3);
+
+                    /* Some trig, right triangle between camera to clicked and camera to interp pos, 
+                        cos times hypotenuse gives adjacent magnitude */
+                    let finalDist = cosOfAngle * distToInterpPoint;
+                    
+                    /* Final Dist is magnitute along ray.dir */
+
                     closestDistance = distance;
                     closest = i;
+                    insertion.idx = closest + 1;
+                    insertion.knot = .5; // FOR NOW
+                    insertion.pos = vec3.fromValues(ray.pos[0], ray.pos[1], ray.pos[2]);
+                    vec3.add(insertion.pos, insertion.pos, [ray.dir[0] * finalDist, ray.dir[1] * finalDist, ray.dir[2] * finalDist])
                 }
             }
 
-            if (closest == 0) {
-                var end = vec2.create();
-                vec2.set(end, this.controlPoints[0], this.controlPoints[1])
-                var distanceToEnd = vec2.distance(p, end);
-                if (distanceToEnd <= closestDistance) {
-                    this.controlPoints.unshift(x, y, 0.0);
-                    this.knot_vector.unshift(0.0);
-                    for (var i = 1; i < this.knot_vector.length; ++i) {
-                        this.knot_vector[i] += .1;
-                    }
-                    for (var i = 0; i < this.knot_vector.length; ++i) {
-                        this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
-                    }
-                } else {
-                    this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
-                    let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
-                    this.knot_vector.splice((closest + 1), 0, t);
-                }
-            } else if (closest == ((this.controlPoints.length / 3) - 2)) {
-                var end = vec2.create();
-                vec2.set(end, this.controlPoints[this.controlPoints.length - 3], this.controlPoints[this.controlPoints.length - 2])
-                var distanceToEnd = vec2.distance(p, end);
-                if (distanceToEnd <= closestDistance) {
-                    this.controlPoints.push(x, y, 0.0);
-                    this.knot_vector.push(1. + (1.0 / (this.knot_vector.length - 1)));
-                    for (var i = 0; i < this.knot_vector.length; ++i) {
-                        this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
-                    }
-                } else {
-                    this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
-                    let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
-                    this.knot_vector.splice(closest + 1, 0, t);
-                }
-            } else {
-                this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
-                let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
-                this.knot_vector.splice(closest + 1, 0, t);
-            }
+            // if (closest != -1) {
+
+            //     this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
+            //     let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
+            //     insertion.knot = t;
+            // }
         }
+
+        return insertion;
+    }
+
+    addHandle(insertion_data) {
+        
+        let pos = insertion_data.pos;
+        let knot = insertion_data.knot;
+        let idx = insertion_data.idx;
+        
+        this.controlPoints.splice(idx * 3, 0, pos[0], pos[1], pos[2]);
+        this.knot_vector.splice(idx, 0, knot);
+        
+        // var p = vec2.create()
+        // vec2.set(p, x, y);
+        // else {
+        //     var closest = -1;
+        //     var closestDistance = Number.MAX_VALUE;
+        //     for (var i = 0; i < (this.controlPoints.length / 3 - 1); ++i) {
+        //         var v = vec2.create()
+        //         var w = vec2.create()
+        //         vec2.set(v, this.controlPoints[i * 3 + 0], this.controlPoints[i * 3 + 1])
+        //         vec2.set(w, this.controlPoints[(i + 1) * 3 + 0], this.controlPoints[(i + 1) * 3 + 1])
+        //         var distance = this.distToSegment(p, v, w);
+
+        //         if (distance < closestDistance) {
+        //             closestDistance = distance;
+        //             closest = i;
+        //         }
+        //     }
+
+        //     if (closest == 0) {
+        //         var end = vec2.create();
+        //         vec2.set(end, this.controlPoints[0], this.controlPoints[1])
+        //         var distanceToEnd = vec2.distance(p, end);
+        //         if (distanceToEnd <= closestDistance) {
+        //             this.controlPoints.unshift(x, y, 0.0);
+        //             this.knot_vector.unshift(0.0);
+        //             for (var i = 1; i < this.knot_vector.length; ++i) {
+        //                 this.knot_vector[i] += .1;
+        //             }
+        //             for (var i = 0; i < this.knot_vector.length; ++i) {
+        //                 this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
+        //             }
+        //         } else {
+        //             this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
+        //             let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
+        //             this.knot_vector.splice((closest + 1), 0, t);
+        //         }
+        //     } else if (closest == ((this.controlPoints.length / 3) - 2)) {
+        //         var end = vec2.create();
+        //         vec2.set(end, this.controlPoints[this.controlPoints.length - 3], this.controlPoints[this.controlPoints.length - 2])
+        //         var distanceToEnd = vec2.distance(p, end);
+        //         if (distanceToEnd <= closestDistance) {
+        //             this.controlPoints.push(x, y, 0.0);
+        //             this.knot_vector.push(1. + (1.0 / (this.knot_vector.length - 1)));
+        //             for (var i = 0; i < this.knot_vector.length; ++i) {
+        //                 this.knot_vector[i] /= this.knot_vector[this.knot_vector.length - 1];
+        //             }
+        //         } else {
+        //             this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
+        //             let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
+        //             this.knot_vector.splice(closest + 1, 0, t);
+        //         }
+        //     } else {
+        //         this.controlPoints.splice((closest + 1) * 3, 0, x, y, 0.0);
+        //         let t = (this.knot_vector[closest] + this.knot_vector[closest + 1]) / 2.0;
+        //         this.knot_vector.splice(closest + 1, 0, t);
+        //     }
+        // }
 
         this.updateConstraints();
     }
 
-    setTemporaryHandle(x, y, z, r, g, b, a) {
-        this.temporaryPoint = [x, y, z]
+    setTemporaryHandle(pos, r, g, b, a) {
+        this.temporaryPoint = [pos[0], pos[1], pos[2]]
         this.temporaryPointColor = [r, g, b, a]
     }
 
@@ -708,8 +902,22 @@ class Curve {
     }
 
     getHandlePos(index) {
-        let pos = vec3.create();
-        vec3.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2]);
+        let pos = vec4.create();
+        vec4.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2], 1.0);
+        return pos;
+    }
+
+    getBackHandlePos() {
+        let pos = vec4.create();
+        let index = (this.controlPoints.length / 3) - 1;
+        vec4.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2], 1.0);
+        return pos;
+    }
+
+    getFrontHandlePos() {
+        let pos = vec4.create();
+        let index = 0;
+        vec4.set(pos, this.controlPoints[index * 3 + 0], this.controlPoints[index * 3 + 1], this.controlPoints[index * 3 + 2], 1.0);
         return pos;
     }
 
@@ -1145,20 +1353,20 @@ class Curve {
         }
     }
 
-    draw(projection, modelView, aspect, time) {
+    draw(projection, viewMatrix, aspect, time) {
         var gl = Curve.gl;
 
-        this.updateBuffers()
+        this.updateBuffers(projection, viewMatrix, aspect, time);
         if (this.showControlPolygon) {
-            this.drawControlPolygon(projection, modelView, aspect, time);
+            this.drawControlPolygon(projection, viewMatrix, aspect, time);
         }
 
         if (this.showControlPoints) {
-            this.drawControlPoints(projection, modelView, aspect, time);
+            this.drawControlPoints(projection, viewMatrix, aspect, time);
         }
 
         if (this.showCurve) {
-            this.drawCurve(projection, modelView, aspect, time);
+            this.drawCurve(projection, viewMatrix, aspect, time);
         }
     }
 }

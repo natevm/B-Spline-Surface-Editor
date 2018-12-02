@@ -35,8 +35,8 @@ class BSplineEditor {
 
         /* Camera stuff */
         this.ortho = false;
-        this.near = 0.01;
-        this.far = 100.0;
+        this.near = 0.0001;
+        this.far = 100000.0;
         this.fovy = 45;
 
         this.x = 0.0;
@@ -89,11 +89,18 @@ class BSplineEditor {
         //     }
         // } 
         // else {
-            for (let i = 0; i < 1; ++i) {
+            for (let i = 0; i < 2; ++i) {
                 this.curves.push(new Curve());
                 this.curves[i].controlPoints = []
-                for (let j = 0; j < 10; ++j) {
-                    this.curves[i].addHandle((4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0), true)
+                for (let j = 0; j < 3; ++j) {
+                    let insertionData = {
+                        pos: [(4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0)],
+                        idx: i,
+                        addToBack: true,
+                        addToFront: false,
+                        addToClosest: false
+                    };
+                    this.curves[i].addHandle(insertionData)
                 }
                 this.backup();
             }
@@ -134,7 +141,7 @@ class BSplineEditor {
             this.y =  (e.center.y - bb.top) / (bb.bottom - bb.top); 
 
             
-            this.panStart(x, y, dx, dy);
+            this.rotateStart(x, y, dx, dy);
         });
 
         hammer.on("pinchmove", (e) => {
@@ -149,11 +156,11 @@ class BSplineEditor {
             this.lasty = this.y;
             this.y = (e.center.y - bb.top) / (bb.bottom - bb.top); 
 
-            this.pan(x, y, dx, dy);
+            this.rotate(x, y, dx, dy);
         });
 
         hammer.on("pinchend", (e) => {
-            this.panEnd();
+            this.rotateEnd();
         });
 
         /* Pan */
@@ -174,12 +181,12 @@ class BSplineEditor {
                 /* Try to drag a handle. If no handle is under the cursor, start rotating the camera. */
                 this.dragHandleStart();
                 if (!this.draggingHandle)
-                    this.rotateStart(x, y, dx, dy);
+                    this.panStart(x, y, dx, dy);
             }
             
             if ( (e.pointerType == "mouse") && ((e.changedPointers[0].buttons & (1 << 1)) || (e.changedPointers[0].ctrlKey)) ) 
             {
-                this.panStart(x, y, dx, dy);
+                this.rotateStart(x, y, dx, dy);
             }
             // console.log(e);
         });
@@ -198,15 +205,15 @@ class BSplineEditor {
 
             if (((e.pointerType == "mouse") && (e.changedPointers[0].buttons & (1 << 0)) && (!e.changedPointers[0].ctrlKey)) || (e.pointerType == "touch"))
             {
-                if (this.draggingHandle || (e.changedPointers[0].altKey))
+                if (this.draggingHandle)
                     this.dragHandle();
                 else
-                    this.rotate(x, y, dx, dy);
+                    this.pan(x, y, dx, dy);
             }
             
             if ( (e.pointerType == "mouse") && ((e.changedPointers[0].buttons & (1 << 1)) || (e.changedPointers[0].ctrlKey)) ) 
             {
-                this.pan(x, y, dx, dy);
+                this.rotate(x, y, dx, dy);
             }
         });
         hammer.on('panend', (e) => {
@@ -224,9 +231,15 @@ class BSplineEditor {
 
         /* Press */
         hammer.on('press', (e) => {
+            var bb = e.target.getBoundingClientRect();
+            this.lastx = (e.center.x - bb.left) / (bb.right - bb.left) ;
+            this.x =  (e.center.x - bb.left) / (bb.right - bb.left);
+            this.lasty =  (e.center.y - bb.top) / (bb.bottom - bb.top);
+            this.y =  (e.center.y - bb.top) / (bb.bottom - bb.top); 
+
             this.press((e.center.x / this.zoom - this.gl.canvas.clientWidth / (2.0 * this.zoom)),
                 (e.center.y / this.zoom - this.gl.canvas.clientHeight / (2.0 * this.zoom)));
-            console.log(e);
+            // console.log(e);
         });
         hammer.on('pressup', (e) => { this.pressUp(); });
 
@@ -271,6 +284,23 @@ class BSplineEditor {
             e.preventDefault();
             return false;
         }
+
+        document.addEventListener("mousedown", (e) => { 
+            if (button == 0)
+                this.mousedown = true; 
+        });
+        document.addEventListener("mouseup", (e) => { 
+            this.mousedown = false; 
+            if (this.selectedCurve != -1) {
+                this.curves[this.selectedCurve].clearTemporaryHandle();
+            }            
+        });
+        document.addEventListener("touchstart", (e) => { 
+            if (e.targetTouches.length < 2)
+                this.mousedown = true; 
+        });
+        document.addEventListener("touchend", (e) => { this.mousedown = false; });
+        document.addEventListener("touchcancel", (e) => { this.mousedown = false; });
     }
 
     setOrthoEnabled(enabled) {
@@ -281,7 +311,7 @@ class BSplineEditor {
         this.zoom = Math.pow(10, zoomAmount);
         // this.zoom = 1.0;
         // this.zoomAmount = 1.0;
-        console.log(this.zoom)
+        // console.log(this.zoom)
     }
 
     setShortcutsEnabled(enabled) {
@@ -405,11 +435,24 @@ class BSplineEditor {
         /* If we werent able to select a handle belonging to the current curve, search through 
         all possible curves. */
 
-        /* TODO:  */
+        if (this.selectedHandle == -1) {
+            for (let i = 0; i < this.curves.length; ++i) {
+                var ctl_idx = this.curves[i].getClickedHandle(ray);
+                if (ctl_idx != -1) {
+                    this.selectedHandle = ctl_idx;
+                    if (this.selectedCurve != -1)
+                        this.curves[this.selectedCurve].deselect();
+                    this.selectedCurve = i;
+                    this.curves[i].select();
+                    this.curves[i].selectHandle(ctl_idx);
+                }
+            }
+        }
 
         if ((this.selectedCurve != -1) && (this.selectedHandle != -1)) {
             this.draggingHandle = true;
             this.originalHandlePos = this.curves[this.selectedCurve].getHandlePos(this.selectedHandle);
+            this.originalClickPos = vec2.fromValues(this.x, this.y);
             this.originalRay = ray;
             if (this.transformEnabled) {
                 this.controlPointsCopy = this.curves[this.selectedCurve].controlPoints.slice();
@@ -418,29 +461,72 @@ class BSplineEditor {
     }
 
     dragHandle() {
+        const aspect = this.gl.canvas.clientWidth / this.gl.canvas.clientHeight;
+
+        let invV = mat4.create();
+        mat4.invert(invV, this.viewMatrix);
+
+        let cpos = vec3.create();
+        let cright = vec3.create();
+        let cup = vec3.create();
+        let cforward = vec3.create();
+
+        vec3.set(cright, invV[0], invV[1], invV[2]);
+        vec3.set(cup, invV[4], invV[5], invV[6]);
+        vec3.set(cforward, invV[8], invV[9], invV[10]);
+        vec3.set(cpos, invV[12], invV[13], invV[14]);
+
         if (this.selectedHandle == -1) return;
 
         let ray = this.getRay();
         let origRay = this.originalRay;
+        let newPos = vec3.create();
+
         
-        let r1 = vec3.create();
-        let r2 = vec3.create();
-        vec3.set(r1, ray.dir[0], ray.dir[1], ray.dir[2]);
-        vec3.set(r2, origRay.dir[0], origRay.dir[1], origRay.dir[2]);
+        if (this.ortho) {
+            let delta = vec3.create();
 
-        let dist = vec3.dist(ray.pos, this.originalHandlePos);
+            let clickPos = vec2.fromValues(this.x, this.y);
+            let deltaClickPos = vec2.create();
+            vec3.subtract(deltaClickPos, clickPos, this.originalClickPos);
+            deltaClickPos[0] *= aspect;
+            deltaClickPos[1] *= -1;
+            console.log(deltaClickPos);
+            // let dx = (this.x - .5) * aspect;
+            // let dy = -(this.y - .5);
 
-        vec3.scale(r1, r1, dist);
-        vec3.scale(r2, r2, dist);
-        
-        let delta = vec3.create();
-        vec3.subtract(delta, r1, r2);
+            let deltar = vec3.fromValues(cright[0], cright[1], cright[2]);
+            let deltau = vec3.fromValues(cup[0], cup[1], cup[2]);
 
+            vec3.scale(deltar, deltar, deltaClickPos[0]);
+            vec3.scale(deltau, deltau,  deltaClickPos[1]);
+            // vec3.subtract()
+            // vec3.subtract(delta, ray.pos, this.originalHandlePos);
+            vec3.add(delta, delta, deltau);
+            vec3.add(delta, delta, deltar);
+            vec3.add(newPos, this.originalHandlePos, delta);
+        }
+        else {
+            let delta = vec3.create();
+
+            let r1 = vec3.create();
+            let r2 = vec3.create();
+            vec3.set(r1, ray.dir[0], ray.dir[1], ray.dir[2]);
+            vec3.set(r2, origRay.dir[0], origRay.dir[1], origRay.dir[2]);
+            
+            let dist = vec3.dist(ray.pos, this.originalHandlePos);
+            
+            vec3.scale(r1, r1, dist);
+            vec3.scale(r2, r2, dist);
+            
+            vec3.subtract(delta, r1, r2);
+            vec3.add(newPos, this.originalHandlePos, delta);
+        }
+
+        // console.log(delta);
 
         // if (this.editEnabled)
         // {
-            let newPos = vec3.create();
-            vec3.add(newPos, this.originalHandlePos, delta);
 
             this.curves[this.selectedCurve].moveHandle(this.selectedHandle, newPos);
                 // Math.round(100 * (x - this.originalHandlePos[0]))/100,
@@ -476,7 +562,7 @@ class BSplineEditor {
     }
 
     dragHandleEnd() {
-
+        this.draggingHandle = false;
     }
 
     rotateStart(initialX, initialY, deltaX, deltaY) {
@@ -527,11 +613,53 @@ class BSplineEditor {
     }
 
     press(x, y) {
-        console.log("press is currently unsupported");
+        let ray = this.getRay();
+
+        // if (!this.editEnabled) return;
+
+        var deleting = false;
+        let insertion = null;
+
+        console.log("pressing")
+        if (this.selectedCurve != -1) {
+            var ctl_idx = this.curves[this.selectedCurve].getClickedHandle(ray);
+            if (ctl_idx == -1) {
+                insertion = this.curves[this.selectedCurve].getInsertionLocation(ray, this.viewMatrix, this.perspectiveMatrix, this.addToFront, this.addToBack, this.addToClosest);
+                this.curves[this.selectedCurve].setTemporaryHandle(insertion.pos, 0.1, 1.0, 0.0, 1.0);
+            }
+            else {
+                let handlePos = this.curves[this.selectedCurve].getHandlePos(ctl_idx);
+                this.curves[this.selectedCurve].setTemporaryHandle(handlePos, .6, 0.0, 0.0, 1.0);
+                deleting = true;
+            }
+        }
+
+        setTimeout(() => {
+            if (this.selectedCurve != -1) {
+                this.curves[this.selectedCurve].clearTemporaryHandle();
+            }
+
+            if (this.mousedown && this.panning == false && this.draggingHandle == false) {
+                if (insertion != null) {
+                    if (this.pointJustAdded == false) {
+                        this.curves[this.selectedCurve].addHandle(insertion);
+                        this.backup();
+                    } 
+                    this.pointJustAdded = true;
+                } else if ((this.pointJustAdded == false) && deleting) {
+                    this.selectedHandle = ctl_idx;
+                    this.deleteLastHandle();
+                    return;
+                }
+                this.pointJustAdded = false;
+            }
+
+        }, deleting ? 600 : 400);
+
     }
 
     pressUp() {
-        console.log("pressUp is currently unsupported");
+        this.pointJustAdded = false;
     }
 
     doubleTap(x, y) {
@@ -552,8 +680,21 @@ class BSplineEditor {
         console.log("newCurve is currently unsupported");
     }
 
+    /* Deletes the last clicked handle */
     deleteLastHandle() {
-        console.log("deleteLastHandle is currently unsupported");
+        if (this.selectedCurve != -1 && this.selectedHandle != -1) {
+            if (this.curves[this.selectedCurve].controlPoints.length <= 3) {
+                this.curves.splice(this.selectedCurve, 1);
+                this.selectedCurve = -1;
+                this.selectedHandle = -1;
+            } else {
+                console.log("Deleting point");
+                this.curves[this.selectedCurve].removeHandle(this.selectedHandle);
+                this.selectedHandle = -1;
+            }
+            this.backup();
+        }
+
     }
 
     addHandle() {
@@ -723,7 +864,10 @@ class BSplineEditor {
         
         /* Resize lines */
         for (let i = 0; i < this.curves.length; ++i) {
-            this.curves[i].handleRadius = .01 * this.zoom;//.005;//30 / this.zoom;
+            if (this.ortho)
+                this.curves[i].handleRadius = .02 * this.zoom;//.005;//30 / this.zoom;
+            else
+                this.curves[i].handleRadius = .01 * this.zoom;//.005;//30 / this.zoom;
             this.curves[i].handleThickness = .005;//5 / this.zoom;
             this.curves[i].thickness = .005;//5 / this.zoom;
         }
