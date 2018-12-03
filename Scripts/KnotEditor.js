@@ -449,7 +449,6 @@ class KnotEditor {
         const modelViewMatrix = mat4.create();
         mat4.translate(modelViewMatrix, modelViewMatrix, [this.position.x, this.position.y, -1.0]);
 
-
         /* Set OpenGL state */
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);

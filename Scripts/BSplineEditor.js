@@ -88,17 +88,17 @@ class BSplineEditor {
         // else {
             for (let i = 0; i < 1; ++i) {
                 this.splines.push(new BSpline());
-                this.splines[i].controlPoints = [[]]
-                for (let j = 0; j < 3; ++j) {
-                    let insertionData = {
-                        pos: [(4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0)],
-                        idx: i,
-                        addToBack: true,
-                        addToFront: false,
-                        addToClosest: false
-                    };
-                    this.splines[i].addHandle(insertionData)
-                }
+                // this.splines[i].controlPoints = [[]]
+                // for (let j = 0; j < 3; ++j) {
+                //     let insertionData = {
+                //         pos: [(4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0)],
+                //         idx: i,
+                //         addToBack: true,
+                //         addToFront: false,
+                //         addToClosest: false
+                //     };
+                //     this.splines[i].addHandle(insertionData)
+                // }
                 this.backup();
             }
         // }
@@ -862,10 +862,10 @@ class BSplineEditor {
         /* Resize lines */
         for (let i = 0; i < this.splines.length; ++i) {
             if (this.ortho)
-                this.splines[i].handleRadius = .02 * this.zoom;//.005;//30 / this.zoom;
+                this.splines[i].handle_radius = .02 * this.zoom;//.005;//30 / this.zoom;
             else
-                this.splines[i].handleRadius = .01 * this.zoom;//.005;//30 / this.zoom;
-            this.splines[i].handleThickness = .005;//5 / this.zoom;
+                this.splines[i].handle_radius = .01 * this.zoom;//.005;//30 / this.zoom;
+            this.splines[i].handle_thickness = .005;//5 / this.zoom;
             this.splines[i].thickness = .005;//5 / this.zoom;
         }
 

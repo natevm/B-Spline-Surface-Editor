@@ -210,6 +210,108 @@ angular
                 document.getElementById("UploadBSplineFile").value = ""
             });
 
+            var UploadBSplineSurfaceFileButton = document.getElementById("UploadBSplineSurfaceFile");
+            UploadBSplineSurfaceFileButton.addEventListener("change", (e) => {
+                var selectedFile = event.target.files[0];
+                var filename = event.target.files[0].name;
+                var reader = new FileReader();
+                reader.onload = (event) => {
+                    var lines = event.target.result.split("\n");
+                    lines = cleanArray(lines)
+                    var numBSplineSurfaces = parseInt(lines[0], 10);
+                    assert(numBSplineSurfaces >= 0, "Number of surfaces must be greater than or equal to zero! (P >= 0)")
+                    lines = lines.splice(1)
+        
+                    var splines = [];
+                    var separators = [' ', '\t'];
+                    for (var i = 0; i < numBSplineSurfaces; ++i) {
+                        var numPoints = -1;
+                        var u_degree = -1;
+                        var v_degree = -1;
+                        var num_u_knots = -1;
+                        var num_v_knots = -1;
+                        var u_knot_vector = [];
+                        var v_knot_vector = [];
+                        var num_u_control_points;
+                        var num_v_control_points;
+                        var control_points = [];
+        
+                        /* Get the degrees */
+                        lines[0] = lines[0].trim()
+                        var degreeArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                        degreeArray = cleanArray(degreeArray)
+                        u_degree = parseInt(degreeArray[0]);
+                        v_degree = parseInt(degreeArray[1]);
+                        lines = lines.splice(1)
+
+                        /* Get knot lengths */
+                        lines[0] = lines[0].trim()
+                        var knot_lengths = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                        knot_lengths = cleanArray(knot_lengths)
+                        num_u_knots = parseInt(knot_lengths[0]);
+                        num_v_knots = parseInt(knot_lengths[1]);
+                        lines = lines.splice(1)
+        
+                        /* Get U Knot Vector */
+                        lines[0] = lines[0].trim()
+                        var str_knot_vector = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                        str_knot_vector = cleanArray(str_knot_vector)
+                        for (var i = 0; i < str_knot_vector.length; ++i) {
+                            u_knot_vector.push(parseFloat(str_knot_vector[i]));
+                        }
+                        lines = lines.splice(1)
+
+                        /* Get V Knot Vector */
+                        lines[0] = lines[0].trim()
+                        str_knot_vector = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                        str_knot_vector = cleanArray(str_knot_vector)
+                        for (var i = 0; i < str_knot_vector.length; ++i) {
+                            v_knot_vector.push(parseFloat(str_knot_vector[i]));
+                        }
+                        lines = lines.splice(1)
+
+                        num_u_control_points = num_u_knots - (u_degree + 1);
+                        num_v_control_points = num_v_knots - (v_degree + 1);
+
+                        for (var u = 0; u < num_u_control_points; ++u) {
+                            control_points.push([]);
+                            for (var v = 0; v < num_v_control_points; ++v) {
+                                /* Get a control point */
+                                lines[0] = lines[0].trim()
+                                var str_ctl_pt = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                                str_ctl_pt = cleanArray(str_ctl_pt)
+                                control_points[u].push(parseFloat(str_ctl_pt[0]));
+                                control_points[u].push(parseFloat(str_ctl_pt[1]));
+                                control_points[u].push(parseFloat(str_ctl_pt[2]));
+                                lines = lines.splice(1)
+                            }
+                        }
+
+                        /* Add spline to editor */
+                        var data = {
+                            control_points: control_points,
+                            u_knot_vector: u_knot_vector,
+                            v_knot_vector: v_knot_vector,
+                            is_u_open: false,
+                            is_v_open: false,
+                            is_u_uniform: false,
+                            is_v_uniform: false,
+                            u_degree: u_degree,
+                            v_degree: v_degree
+                        }
+                        splines[i] = new BSpline(data);
+                        bsplineEditor.splines.push(splines[i])
+                    }
+                    console.log(lines);
+                    bsplineEditor.backup();
+                    bsplineEditor.splines[0].select();
+                    bsplineEditor.selectedBSpline = 0; // TEMPORARY
+
+                }
+                reader.readAsText(selectedFile);
+                document.getElementById("UploadBSplineSurfaceFile").value = ""
+            });
+
             bsplineEditor = new BSplineEditor();
             knotEditor = new KnotEditor();
             requestAnimationFrame(render);
@@ -357,8 +459,8 @@ angular
 
         $scope.updateZoom = function () {
             var amount = (1000.0 - $scope.settings.zoom) / 1000.0;
-            amount *= 3;
-            amount -= 1;
+            amount *= 3 * 2.0;
+            amount -= 1 * 2.0;
             // amount += .5;
             // amount *= .1;
 
