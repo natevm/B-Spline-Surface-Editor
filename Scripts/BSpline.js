@@ -225,14 +225,21 @@ class BSpline {
         return shader;
     }
 
-    constructor(obj = null) {
+    constructor(obj = null, dx = 0, dy = 0, dz = 0) {
         this.show_bspline = true;
         this.show_control_polygon = true;
         this.show_control_points = true;
+        this.show_surface = true;
+        this.show_mesh = true;
+        this.show_knot_values = true;
+        this.show_node_values = true;
+
         this.thickness = 5.0;
         this.control_points = (obj == null) ? [
-            [-1, -1, 0.0, 1, -1, 0.0,],
-            [-1, 1, 0.0, 1, 1, 0.0,],
+            [-1.5 + dx, -1.5 + dy, dz, -.5 + dx, -1.5 + dy, dz, .5 + dx, -1.5 + dy, dz, 1.5 + dx, -1.5 + dy, dz,],
+            [-1.5 + dx, -.5 + dy, dz, -.5 + dx, -.5 + dy, dz, .5 + dx, -.5 + dy, dz, 1.5 + dx, -.5 + dy, dz,],
+            [-1.5 + dx, .5 + dy, dz, -.5 + dx, .5 + dy, dz, .5 + dx, .5 + dy, dz, 1.5 + dx, .5 + dy, dz,],
+            [-1.5 + dx, 1.5 + dy, dz, -.5 + dx, 1.5 + dy, dz, .5 + dx, 1.5 + dy, dz, 1.5 + dx, 1.5 + dy, dz,],
         ] : obj.control_points.slice();
         this.temporary_point = []
 
@@ -243,15 +250,15 @@ class BSpline {
         this.selected_handle = -1;
         this.selected_color = [0.0, 0.0, 0.0, 0.0];
         this.deselected_color = [-.7, -.7, -.7, 0.0];
-        this.is_u_open = (obj == null) ? false : obj.is_u_open;
-        this.is_u_uniform = (obj == null) ? false : obj.is_u_uniform;
-        this.is_v_open = (obj == null) ? false : obj.is_v_open;
-        this.is_v_uniform = (obj == null) ? false : obj.is_v_uniform;
+        this.is_u_open = (obj == null) ? true : obj.is_u_open;
+        this.is_u_uniform = (obj == null) ? true : obj.is_u_uniform;
+        this.is_v_open = (obj == null) ? true : obj.is_v_open;
+        this.is_v_uniform = (obj == null) ? true : obj.is_v_uniform;
         this.u_degree = (obj == null) ? 1 : obj.u_degree;
         this.v_degree = (obj == null) ? 1 : obj.v_degree;
-        this.u_knot_vector = (obj == null) ? [0.0, .33, .66, 1.0] : obj.u_knot_vector.slice();
-        this.v_knot_vector = (obj == null) ? [0.0, .33, .66, 1.0] : obj.v_knot_vector.slice();
-        this.num_samples = 16;
+        this.u_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0] : obj.u_knot_vector.slice();
+        this.v_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0] : obj.v_knot_vector.slice();
+        this.num_samples = 8;
 
         let numUControlPoints = this.getNumUControlPoints()
         let numVControlPoints = this.getNumVControlPoints()
@@ -609,12 +616,15 @@ class BSpline {
                     handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
 
                     /* Directions */
-                    handlePointsDirection.push(-1, 1 * (this.selected_handle == v_idx) ? 4 : 1);
+                    handlePointsDirection.push(-1, 1);
 
                     /* Colors */
-                    var rgb = hslToRgb(v_idx * (1.0 / this.getNumVControlPoints()), 1., .5);;
-                    handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
-                    handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                    // var rgb = hslToRgb(v_idx * (1.0 / this.getNumVControlPoints()), 1., .5);;
+                    // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                    // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                    handlePointColors.push(1.0, 1.0, 1.0, 1.0);
+                    handlePointColors.push(1.0, 1.0, 1.0, 1.0);
+
 
                     /* Indices */
                     if (j != this.handle_samples) {
@@ -764,7 +774,7 @@ class BSpline {
         this.cageBuffers.num_indices = ctlIndices.length;
     }
 
-    updateCurveBuffers() {
+    updateCurveBuffers(ku, kv) {
         let gl = BSpline.gl;
 
         /* Create surface data */
@@ -783,139 +793,223 @@ class BSpline {
         let colors = [];
         let ctlIdxOffset = 0;
 
-        let numU = 4;
-        let numV = 4;
+        let numU = 2;
+        let numV = 2;
 
-        /* Lines with fixed U */
-        for (var u_idx = 0; u_idx < numU; ++u_idx) {
-            for (var s = 0; s <= this.num_samples; ++s) {
-                uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
-                uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
-                direction.push(-1, 1)
-                colors.push(0.0, .0, .0, 1.0);
-                colors.push(.0, .0, .0, 1.0);
-                if (s != this.num_samples) {
-                    let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
-    
-                    /* each two points creates two triangles in our strip. */
-                    indices.push(
-                        s * 2 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 1 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 3 + offset,
-                        s * 2 + 1 + offset); // first pt, second pt
+        if (this.show_mesh)
+        {
+            /* Lines with fixed U */
+            for (var u_idx = 0; u_idx < numU; ++u_idx) {
+                for (var s = 0; s <= this.num_samples; ++s) {
+                    uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
+                    uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
+                    direction.push(-1, 1)
+                    colors.push(0.5, .5, .5, 1.0);
+                    colors.push(0.5, .5, .5, 1.0);
+                    if (s != this.num_samples) {
+                        let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+
+                        /* each two points creates two triangles in our strip. */
+                        indices.push(
+                            s * 2 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 1 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 3 + offset,
+                            s * 2 + 1 + offset); // first pt, second pt
+                    }
+                }
+            }
+
+            ctlIdxOffset = (uv.length / 2);
+
+            /* Lines with fixed V */
+            for (var v_idx = 0; v_idx < numV; ++v_idx) {
+                for (var s = 0; s <= this.num_samples; ++s) {
+                    uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
+                    uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
+                    direction.push(-1, 1)
+                    colors.push(0.5, .5, .5, 1.0);
+                    colors.push(0.5, .5, .5, 1.0);
+                    if (s != this.num_samples) {
+                        let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                        // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
+                        /* each two points creates two triangles in our strip. */
+                        indices.push(
+                            s * 2 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 1 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 3 + offset,
+                            s * 2 + 1 + offset); // first pt, second pt
+                    }
                 }
             }
         }
+
 
         ctlIdxOffset = (uv.length / 2);
 
-        /* Lines with fixed V */
-        for (var v_idx = 0; v_idx < numV; ++v_idx) {
-            for (var s = 0; s <= this.num_samples; ++s) {
-                uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
-                uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
-                direction.push(-1, 1)
-                colors.push(0.0, .0, .0, 1.0);
-                colors.push(0.0, .0, .0, 1.0);
-                if (s != this.num_samples) {
-                    let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
-                    // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
-                    /* each two points creates two triangles in our strip. */
-                    indices.push(
-                        s * 2 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 1 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 3 + offset,
-                        s * 2 + 1 + offset); // first pt, second pt
+        if (this.show_knot_values) {
+
+            /* Knot Values */
+            for (var u_idx = 0; u_idx <= 1; ++u_idx) {
+                for (var s = 0; s <= this.num_samples; ++s) {
+                    uv.push(u_idx, s / this.num_samples);
+                    uv.push(u_idx, s / this.num_samples);
+                    direction.push(-1, 1)
+                    colors.push(1.0, 1.0, 1.0, 1.0);
+                    colors.push(1.0, 1.0, 1.0, 1.0);
+                    if (s != this.num_samples) {
+                        let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+
+                        /* each two points creates two triangles in our strip. */
+                        indices.push(
+                            s * 2 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 1 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 3 + offset,
+                            s * 2 + 1 + offset); // first pt, second pt
+                    }
+                }
+            }
+
+            ctlIdxOffset = (uv.length / 2);
+
+            for (var v_idx = 0; v_idx <= 1; ++v_idx) {
+                for (var s = 0; s <= this.num_samples; ++s) {
+                    uv.push(s / this.num_samples, v_idx);
+                    uv.push(s / this.num_samples, v_idx);
+                    direction.push(-1, 1)
+                    colors.push(1.0, 1.0, 1.0, 1.0);
+                    colors.push(1.0, 1.0, 1.0, 1.0);
+                    if (s != this.num_samples) {
+                        let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                        // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
+                        /* each two points creates two triangles in our strip. */
+                        indices.push(
+                            s * 2 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 1 + offset,
+                            s * 2 + 2 + offset,
+                            s * 2 + 3 + offset,
+                            s * 2 + 1 + offset); // first pt, second pt
+                    }
                 }
             }
         }
-
         ctlIdxOffset = (uv.length / 2);
 
-        /* Knot Values */
-        for (var u_idx = 0; u_idx <= 1; ++u_idx) {
-            for (var s = 0; s <= this.num_samples; ++s) {
-                uv.push(u_idx, s / this.num_samples);
-                uv.push(u_idx, s / this.num_samples);
-                direction.push(-1, 1)
-                colors.push(1.0, .0, .0, 1.0);
-                colors.push(1.0, .0, .0, 1.0);
-                if (s != this.num_samples) {
-                    let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
-    
-                    /* each two points creates two triangles in our strip. */
-                    indices.push(
-                        s * 2 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 1 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 3 + offset,
-                        s * 2 + 1 + offset); // first pt, second pt
+        let umin = this.u_knot_vector[ku]
+        let umax = this.u_knot_vector[ku + 1]
+        let vmin = this.v_knot_vector[kv]
+        let vmax = this.v_knot_vector[kv + 1]
+
+        if (this.show_node_values) {
+            /* Compute node values */
+            let uNodes = [];
+            for (var i = 0; i <= this.u_knot_vector.length - this.u_degree; ++i) {
+                let node = 0;
+                for (var n = 1; n <= this.u_degree; ++n) {
+                    node += this.u_knot_vector[i + n];
+                }
+                node /= this.u_degree;
+                uNodes.push(node);
+            }
+
+            let vNodes = [];
+            for (var i = 0; i <= this.v_knot_vector.length - this.v_degree; ++i) {
+                let node = 0;
+                for (var n = 1; n <= this.v_degree; ++n) {
+                    node += this.v_knot_vector[i + n];
+                }
+                node /= this.v_degree;
+                vNodes.push(node);
+            }
+
+            /* Add a curve for all uNodes in this patch */
+            for (var i = 0; i < uNodes.length; ++i) {
+                if ((uNodes[i] >= umin) && (uNodes[i] <= umax)) {
+                    let u_val = (uNodes[i] - umin) / (umax - umin);
+
+                    /* Node is within patch, add a curve. */
+                    for (var s = 0; s <= this.num_samples; ++s) {
+                        uv.push(u_val, s / this.num_samples);
+                        uv.push(u_val, s / this.num_samples);
+                        direction.push(-1, 1)
+
+                        var rgb = hslToRgb(i * (1.0 / this.getNumUControlPoints()), 1., .5);;
+
+                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                        if (s != this.num_samples) {
+                            let offset = ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+
+                            /* each two points creates two triangles in our strip. */
+                            indices.push(
+                                s * 2 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 1 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 3 + offset,
+                                s * 2 + 1 + offset); // first pt, second pt
+                        }
+                    }
+
+                    ctlIdxOffset = (uv.length / 2);
                 }
             }
-        }
 
-        ctlIdxOffset = (uv.length / 2);
+            /* Add a curve for all vNodes in this patch */
+            for (var i = 0; i < vNodes.length; ++i) {
+                if ((vNodes[i] >= vmin) && (vNodes[i] <= vmax)) {
+                    let v_val = (vNodes[i] - vmin) / (vmax - vmin);
 
-        for (var v_idx = 0; v_idx <= 1; ++v_idx) {
-            for (var s = 0; s <= this.num_samples; ++s) {
-                uv.push(s / this.num_samples, v_idx);
-                uv.push(s / this.num_samples, v_idx);
-                direction.push(-1, 1)
-                colors.push(1.0, .0, .0, 1.0);
-                colors.push(1.0, .0, .0, 1.0);
-                if (s != this.num_samples) {
-                    let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
-                    // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
-                    /* each two points creates two triangles in our strip. */
-                    indices.push(
-                        s * 2 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 1 + offset,
-                        s * 2 + 2 + offset,
-                        s * 2 + 3 + offset,
-                        s * 2 + 1 + offset); // first pt, second pt
+                    for (var s = 0; s <= this.num_samples; ++s) {
+                        uv.push(s / this.num_samples, v_val);
+                        uv.push(s / this.num_samples, v_val);
+                        direction.push(-1, 1)
+
+                        var rgb = hslToRgb(i * (1.0 / this.getNumVControlPoints()), 1., .5);;
+
+                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+
+                        if (s != this.num_samples) {
+                            let offset = ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                            // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
+                            /* each two points creates two triangles in our strip. */
+                            indices.push(
+                                s * 2 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 1 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 3 + offset,
+                                s * 2 + 1 + offset); // first pt, second pt
+                        }
+                    }
+                    ctlIdxOffset = (uv.length / 2);
                 }
             }
+
         }
 
-        /* Compute node values */
-        let uNodes = [];
-        for (var i = 0; i < this.u_knot_vector.length - this.u_degree; ++i) {
-            let node = 0;
-            for (var n = 1; n <= this.u_degree; ++n) {
-                node += this.u_knot_vector[i + n];
-            }
-            node /= this.u_degree;
-            uNodes.push(node);
-        }
 
-        let vNodes = [];
-        for (var i = 0; i < this.v_knot_vector.length - this.v_degree; ++i) {
-            let node = 0;
-            for (var n = 1; n <= this.v_degree; ++n) {
-                node += this.v_knot_vector[i + n];
-            }
-            node /= this.v_degree;
-            vNodes.push(node);
-        }
-        
+
+
 
         /* Upload Surface Data */
         gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.uv);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
-        
+
         gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.directions);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(direction), gl.STATIC_DRAW);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.colors);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
 
-        this.curveBuffers.num_verticies = ( uv.length / 2 );
+        this.curveBuffers.num_verticies = (uv.length / 2);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.curveBuffers.indices);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -984,15 +1078,6 @@ class BSpline {
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
 
         this.surfaceBuffers.num_verticies = 6 * this.num_samples * this.num_samples;
-    }
-
-    updateBuffers(projection, viewMatrix, aspect, time) {
-        let gl = BSpline.gl;
-
-        this.updateHandleBuffers(viewMatrix);
-        this.updateCageBuffers();
-        this.updateCurveBuffers();
-        this.updateSurfaceBuffers();
     }
 
     getTValues() {
@@ -1444,6 +1529,10 @@ class BSpline {
         /* K is the knot interval containing x. It starts at degree, and ends at the last interval of the knot. */
         for (var ku = this.u_degree, kuu = 0; ku < this.u_knot_vector.length - (this.u_degree + 1); ++ku, ++kuu) {
             for (var kv = this.v_degree, kvv = 0; kv < this.v_knot_vector.length - (this.v_degree + 1); ++kv, ++kvv) {
+
+                this.updateCurveBuffers(ku, kv);
+
+
                 // t values
                 {
                     const numComponents = 2;
@@ -1481,7 +1570,7 @@ class BSpline {
                     gl.enableVertexAttribArray(
                         BSpline.BSplineProgramInfo.attribLocations.direction);
                 }
-                
+
                 // colors
                 {
                     const numComponents = 4;
@@ -1607,6 +1696,8 @@ class BSpline {
     }
 
     drawSurface(projection, modelView, aspect, time) {
+        this.updateSurfaceBuffers();
+
         let gl = BSpline.gl;
         if (!BSpline.SurfaceShaderProgram) return;
 
@@ -1753,6 +1844,8 @@ class BSpline {
     }
 
     drawHandles(projection, modelView, aspect, time) {
+        this.updateHandleBuffers(modelView);
+
         let gl = BSpline.gl;
 
         if (!BSpline.LineShaderProgram) return;
@@ -1892,6 +1985,8 @@ class BSpline {
     }
 
     drawControlCage(projection, modelView, aspect, time) {
+        this.updateCageBuffers();
+
         let gl = BSpline.gl;
 
         if (!BSpline.LineShaderProgram) return;
@@ -2038,18 +2133,19 @@ class BSpline {
 
         gl.depthFunc(gl.LESS)
 
-        this.updateBuffers(projection, viewMatrix, aspect, time);
+        //this.updateBuffers(projection, viewMatrix, aspect, time);
         if (this.show_bspline) {
-            this.drawSurface(projection, viewMatrix, aspect, time);
+            if (this.show_surface)
+                this.drawSurface(projection, viewMatrix, aspect, time);
             // gl.depthFunc(gl.ALWAYS)
             this.drawCurves(projection, viewMatrix, aspect, time);
             // gl.depthFunc(gl.LESS)
         }
 
         if (this.show_control_polygon) {
-            gl.depthFunc(gl.ALWAYS)
+            // gl.depthFunc(gl.ALWAYS)
             this.drawControlCage(projection, viewMatrix, aspect, time);
-            gl.depthFunc(gl.LESS)
+            // gl.depthFunc(gl.LESS)
         }
 
         if (this.show_control_points) {

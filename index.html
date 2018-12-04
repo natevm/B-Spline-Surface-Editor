@@ -52,13 +52,12 @@
                                     </md-button>
                                     <input class="ng-hide" id="UploadBSplineSurfaceFile" type="file" />
                                 </md-menu-item>
-                                <md-menu-item>
+                                <!-- <md-menu-item>
                                     <md-button onclick="document.getElementById('UploadBSplineFile').click();">
                                         Import 3D B-Spline Design...
-                                        <!-- <span class="md-alt-text"> {{ 'M-O' | keyboardShortcut }}</span> -->
                                     </md-button>
                                     <input class="ng-hide" id="UploadBSplineFile" type="file" />
-                                </md-menu-item>
+                                </md-menu-item> -->
                                 <md-menu-item>
                                     <md-button ng-click="save($event)">
                                         Save Design
@@ -188,11 +187,19 @@
 
                                 <md-menu-divider></md-menu-divider>
                                 <md-menu-item type="checkbox" ng-model="settings.showControlPolygon" ng-click="updateVisibility($event)">Show
-                                    Control Polygon</md-menu-item>
+                                    Control Cage</md-menu-item>
                                 <md-menu-item type="checkbox" ng-model="settings.showControlHandles" ng-click="updateVisibility($event)">Show
                                     Control Handles</md-menu-item>
                                 <md-menu-item type="checkbox" ng-model="settings.showBSpline" ng-click="updateVisibility($event)">Show
                                     BSpline</md-menu-item>
+                                <md-menu-item type="checkbox" ng-model="settings.showSurface" ng-click="updateVisibility($event)">Show
+                                    BSpline Surface</md-menu-item>
+                                <md-menu-item type="checkbox" ng-model="settings.showMesh" ng-click="updateVisibility($event)">Show
+                                    BSpline Grid</md-menu-item>
+                                <md-menu-item type="checkbox" ng-model="settings.showKnotValues" ng-click="updateVisibility($event)">Show
+                                    BSpline Knot Values</md-menu-item>
+                                <md-menu-item type="checkbox" ng-model="settings.showNodeValues" ng-click="updateVisibility($event)">Show
+                                    BSpline Node Values</md-menu-item>
                                 <md-menu-divider></md-menu-divider>
                                 <md-menu-item type="checkbox" ng-model="settings.fullScreen" ng-click="toggleFullScreen($event)"
                                     nv>Full screen</md-menu-item>

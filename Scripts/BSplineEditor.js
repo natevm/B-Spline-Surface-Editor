@@ -5,9 +5,15 @@ class BSplineEditor {
         this.pointJustAdded = false;
         this.selectedBSpline = -1;
         this.selectedHandle = -1;
-        this.showBSplines = true;
+
         this.showControlPolygons = true;
         this.showControlHandles = true;
+        this.showBSplines = true;
+        this.showSurface = true;
+        this.showMesh = true;
+        this.showKnotValues = true;
+        this.showNodes = true;
+
         this.shortcutsEnabled = true;
         this.then = 0.0;
         this.canvas = document.querySelector('#glcanvas');
@@ -676,7 +682,33 @@ class BSplineEditor {
     }
 
     newBSpline() {
-        console.log("newBSpline is currently unsupported");
+        let invV = mat4.create();
+        mat4.invert(invV, this.viewMatrix);
+
+        let cpos = vec3.create();
+        let cright = vec3.create();
+        let cup = vec3.create();
+        let cforward = vec3.create();
+
+        vec3.set(cright, invV[0], invV[1], invV[2]);
+        vec3.set(cup, invV[4], invV[5], invV[6]);
+        vec3.set(cforward, invV[8], invV[9], invV[10]);
+        vec3.set(cpos, invV[12], invV[13], invV[14]);
+
+
+        let spline = new BSpline(null, cpos[0] - cforward[0], cpos[1] - cforward[1], cpos[2] - cforward[2]);
+        
+        spline.show_control_points = this.showControlHandles;
+        spline.show_control_polygon = this.showControlPolygons;
+        spline.show_mesh = this.showMesh;
+        spline.show_bspline = this.showBSplines;
+        spline.show_surface = this.showSurface;
+        spline.show_knot_values = this.showKnotValues;
+        spline.show_node_values = this.showNodes;
+
+        this.splines.push(spline);
+
+        // console.log("newBSpline is currently unsupported");
     }
 
     /* Deletes the last clicked handle */
@@ -722,21 +754,49 @@ class BSplineEditor {
     setControlPolygonVisibility(visible) {
         this.showControlPolygons = visible;
         for (var j = 0; j < this.splines.length; ++j) {
-            this.splines[j].showControlPolygon = this.showControlPolygons;
+            this.splines[j].show_control_polygon = this.showControlPolygons;
         }
     }
 
     setControlHandleVisibility(visible) {
         this.showControlHandles = visible;
         for (var j = 0; j < this.splines.length; ++j) {
-            this.splines[j].showControlPoints = this.showControlHandles;
+            this.splines[j].show_control_points = this.showControlHandles;
         }
     }
 
     setBSplineVisibility(visible) {
         this.showBSplines = visible;
         for (var j = 0; j < this.splines.length; ++j) {
-            this.splines[j].showBSpline = this.showBSplines;
+            this.splines[j].show_bspline = this.showBSplines;
+        }
+    }
+
+    setSurfaceVisibility(visible) {
+        this.showSurface = visible;
+        for (var j = 0; j < this.splines.length; ++j) {
+            this.splines[j].show_surface = this.showSurface;
+        }
+    }
+
+    setMeshVisibility(visible) {
+        this.showMesh = visible;
+        for (var j = 0; j < this.splines.length; ++j) {
+            this.splines[j].show_mesh = this.showMesh;
+        }
+    }
+
+    setKnotValueVisibility(visible) {
+        this.showKnotValues = visible;
+        for (var j = 0; j < this.splines.length; ++j) {
+            this.splines[j].show_knot_values = this.showKnotValues;
+        }
+    }
+
+    setNodeVisibility(visible) {
+        this.showNodes = visible;
+        for (var j = 0; j < this.splines.length; ++j) {
+            this.splines[j].show_node_values = this.showNodes;
         }
     }
 

@@ -62,9 +62,15 @@ angular
     .controller('BSplineCtrl', function BSplineCtrl($mdDialog, $mdBottomSheet, $mdToast, $scope, $timeout, $window) {
         $scope.settings = {
             printLayout: true,
+            
             showControlPolygon: true,
             showControlHandles: true,
             showBSpline: true,
+            showSurface: true,
+            showMesh: true,
+            showKnotValues: true,
+            showNodeValues: true,
+
             minzoom: 1,
             maxzoom: 1000,
             zoom: 400,
@@ -113,104 +119,104 @@ angular
                 }
             }
 
-            var UploadBSplineFileButton = document.getElementById("UploadBSplineFile");
-            UploadBSplineFileButton.addEventListener("change", (e) => {
-                var selectedFile = event.target.files[0];
-                var filename = event.target.files[0].name;
-                var reader = new FileReader();
-                reader.onload = (event) => {
-                    var lines = event.target.result.split("\n");
-                    lines = cleanArray(lines)
-                    var numBSplines = parseInt(lines[0], 10);
-                    assert(numBSplines >= 0, "Number of splines must be greater than or equal to zero! (P >= 0)")
-                    lines = lines.splice(1)
+            // var UploadBSplineFileButton = document.getElementById("UploadBSplineFile");
+            // UploadBSplineFileButton.addEventListener("change", (e) => {
+            //     var selectedFile = event.target.files[0];
+            //     var filename = event.target.files[0].name;
+            //     var reader = new FileReader();
+            //     reader.onload = (event) => {
+            //         var lines = event.target.result.split("\n");
+            //         lines = cleanArray(lines)
+            //         var numBSplines = parseInt(lines[0], 10);
+            //         assert(numBSplines >= 0, "Number of splines must be greater than or equal to zero! (P >= 0)")
+            //         lines = lines.splice(1)
         
-                    var splines = [];
-                    for (var i = 0; i < numBSplines; ++i) {
-                        splines[i] = new BSpline();
-                        var numPoints = -1;
-                        var degree = -1;
+            //         var splines = [];
+            //         for (var i = 0; i < numBSplines; ++i) {
+            //             splines[i] = new BSpline();
+            //             var numPoints = -1;
+            //             var degree = -1;
         
-                        /* Get the degree */
-                        lines[0] = lines[0].trim()
-                        degree = parseInt(lines[0]);
-                        lines = lines.splice(1)
+            //             /* Get the degree */
+            //             lines[0] = lines[0].trim()
+            //             degree = parseInt(lines[0]);
+            //             lines = lines.splice(1)
         
-                        /* Get total points in first line */
-                        lines[0] = lines[0].trim()
-                        numPoints = parseInt(lines[0])
-                        lines = lines.splice(1)
+            //             /* Get total points in first line */
+            //             lines[0] = lines[0].trim()
+            //             numPoints = parseInt(lines[0])
+            //             lines = lines.splice(1)
         
-                        console.log("new curve")
+            //             console.log("new curve")
         
-                        /* Parse control points */
-                        splines[i].controlPoints = [[]]
-                        for (var j = 0; j < numPoints; ++j) {
-                            var separators = [' ', '\t'];
-                            var strArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
-                            strArray = cleanArray(strArray)
-                            assert(strArray.length == 3);
-                            var x = parseFloat(strArray[0])
-                            var y = parseFloat(strArray[1])
-                            var z = parseFloat(strArray[2])
-                            console.log("x: " + x + " y: " + y + " z: " + z);
-                            lines = lines.splice(1)
-                            if (numPoints < 100 || j % 2 == 0) {
-                                splines[i].controlPoints[0].push(x, y, z)
-                            }
-                        }
+            //             /* Parse control points */
+            //             splines[i].controlPoints = [[]]
+            //             for (var j = 0; j < numPoints; ++j) {
+            //                 var separators = [' ', '\t'];
+            //                 var strArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+            //                 strArray = cleanArray(strArray)
+            //                 assert(strArray.length == 3);
+            //                 var x = parseFloat(strArray[0])
+            //                 var y = parseFloat(strArray[1])
+            //                 var z = parseFloat(strArray[2])
+            //                 console.log("x: " + x + " y: " + y + " z: " + z);
+            //                 lines = lines.splice(1)
+            //                 if (numPoints < 100 || j % 2 == 0) {
+            //                     splines[i].controlPoints[0].push(x, y, z)
+            //                 }
+            //             }
         
-                        splines[i].setDegree(degree);
+            //             splines[i].setDegree(degree);
         
-                        /* Parse knot */
-                        var knotProvided = 0;
-                        if (lines.length != 0) 
-                        {
-                            lines[0] = lines[0].trim()
-                            knotProvided = parseInt(lines[0])
-                            lines = lines.splice(1)
-                        }
+            //             /* Parse knot */
+            //             var knotProvided = 0;
+            //             if (lines.length != 0) 
+            //             {
+            //                 lines[0] = lines[0].trim()
+            //                 knotProvided = parseInt(lines[0])
+            //                 lines = lines.splice(1)
+            //             }
         
-                        if (knotProvided == 0) {
-                            splines[i].setOpen(true);
-                            splines[i].setUniformity(true);
-                        } else {
-                            splines[i].setOpen(false);
-                            splines[i].setUniformity(false);
-                            var separators = [' ', '\t'];
-                            var strArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
-                            strArray = cleanArray(strArray)
-                            var knot = [];
-                            for (var j = 0; j < strArray.length; ++j) {
-                                knot.push(parseFloat(strArray[j]));
-                            }
-                            /* normalize the knot */
-                            var min = knot[0];
-                            var max = knot[knot.length - 1];
-                            for (var j = 0; j < knot.length; ++j) {
-                                knot[j] -= min;
-                                knot[j] /= (max - min);
-                            }
-                            splines[i].knot_vector = knot;
-                            lines = lines.splice(1)
-                        }
+            //             if (knotProvided == 0) {
+            //                 splines[i].setOpen(true);
+            //                 splines[i].setUniformity(true);
+            //             } else {
+            //                 splines[i].setOpen(false);
+            //                 splines[i].setUniformity(false);
+            //                 var separators = [' ', '\t'];
+            //                 var strArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+            //                 strArray = cleanArray(strArray)
+            //                 var knot = [];
+            //                 for (var j = 0; j < strArray.length; ++j) {
+            //                     knot.push(parseFloat(strArray[j]));
+            //                 }
+            //                 /* normalize the knot */
+            //                 var min = knot[0];
+            //                 var max = knot[knot.length - 1];
+            //                 for (var j = 0; j < knot.length; ++j) {
+            //                     knot[j] -= min;
+            //                     knot[j] /= (max - min);
+            //                 }
+            //                 splines[i].knot_vector = knot;
+            //                 lines = lines.splice(1)
+            //             }
         
         
-                        if (filename.endsWith(".crv")) {
-                            splines[i].showBSpline = false;
-                            splines[i].showControlPolygon = true;
-                            splines[i].showControlPoints = false;
-                        }
-                        bsplineEditor.splines.push(splines[i])
-                    }
-                    console.log(lines);
-                    bsplineEditor.backup();
-                    bsplineEditor.selectedBSpline = 0; // TEMPORARY
+            //             if (filename.endsWith(".crv")) {
+            //                 splines[i].showBSpline = false;
+            //                 splines[i].showControlPolygon = true;
+            //                 splines[i].showControlPoints = false;
+            //             }
+            //             bsplineEditor.splines.push(splines[i])
+            //         }
+            //         console.log(lines);
+            //         bsplineEditor.backup();
+            //         bsplineEditor.selectedBSpline = 0; // TEMPORARY
 
-                }
-                reader.readAsText(selectedFile);
-                document.getElementById("UploadBSplineFile").value = ""
-            });
+            //     }
+            //     reader.readAsText(selectedFile);
+            //     document.getElementById("UploadBSplineFile").value = ""
+            // });
 
             var UploadBSplineSurfaceFileButton = document.getElementById("UploadBSplineSurfaceFile");
             UploadBSplineSurfaceFileButton.addEventListener("change", (e) => {
@@ -302,6 +308,15 @@ angular
                             v_degree: v_degree
                         }
                         splines[i] = new BSpline(data);
+                        
+                        splines[i].show_control_points = bsplineEditor.showControlHandles;
+                        splines[i].show_control_polygon = bsplineEditor.showControlPolygons;
+                        splines[i].show_mesh = bsplineEditor.showMesh;
+                        splines[i].show_bspline = bsplineEditor.showBSplines;
+                        splines[i].show_surface = bsplineEditor.showSurface;
+                        splines[i].show_knot_values = bsplineEditor.showKnotValues;
+                        splines[i].show_node_values = bsplineEditor.showNodes;
+
                         bsplineEditor.splines.push(splines[i])
                     }
                     console.log(lines);
@@ -354,6 +369,11 @@ angular
             bsplineEditor.setControlPolygonVisibility($scope.settings.showControlPolygon);
             bsplineEditor.setControlHandleVisibility($scope.settings.showControlHandles);
             bsplineEditor.setBSplineVisibility($scope.settings.showBSpline);
+
+            bsplineEditor.setSurfaceVisibility($scope.settings.showSurface);
+            bsplineEditor.setMeshVisibility($scope.settings.showMesh);
+            bsplineEditor.setKnotValueVisibility($scope.settings.showKnotValues);
+            bsplineEditor.setNodeVisibility($scope.settings.showNodeValues);
 
             $mdToast.show(
                 $mdToast.simple()

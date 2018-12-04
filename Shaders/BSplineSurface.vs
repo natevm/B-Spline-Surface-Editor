@@ -144,5 +144,5 @@ void main(void) {
     vec4 currentProjected = projViewModel * vec4(position, 1.0);
 
     gl_Position = currentProjected;
-    vColor = vec4(1.0, 1.0, 1.0, 1.0);
+    vColor = vec4(.125, .125, .125, 1.0);
 }
