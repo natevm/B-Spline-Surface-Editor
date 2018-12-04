@@ -72,6 +72,8 @@ angular
             fullScreen: false,
             useOrtho: false,
             insertionMode: 'back',
+            editingU: true,
+            editingV: false,
             designName: (localStorage.getItem("design_name") == undefined) ? "Untitled design" : localStorage.getItem("design_name")
         };
 
@@ -328,6 +330,16 @@ angular
             );
         };
 
+        // $scope.updateEditUVMode = function(ev) {
+        //     bsplineEditor.editingU = $scope.settings.editingU;
+        //     // $mdToast.show(
+        //     //     $mdToast.simple()
+        //     //         .textContent('Editing ' + ($scope.settings.snappingEnabled) ? "enabled" : "disabled"+ '.')
+        //     //         .position('bottom right')
+        //     //         .hideDelay(3000)
+        //     // );
+        // }
+
         $scope.updateSnapping = function (ev) {
             bsplineEditor.setSnappingMode($scope.settings.snappingEnabled);
             $mdToast.show(
@@ -469,47 +481,47 @@ angular
         }
 
         $scope.save = function (ev) {
-            // Function to download data to a file
-            function download(data, filename, type) {
-                var file = new Blob([data], { type: type });
-                if (window.navigator.msSaveOrOpenBlob) // IE10+
-                    window.navigator.msSaveOrOpenBlob(file, filename);
-                else { // Others
-                    var a = document.createElement("a"),
-                        url = URL.createObjectURL(file);
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(function () {
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-                    }, 0);
-                }
-            }
+            // // Function to download data to a file
+            // function download(data, filename, type) {
+            //     var file = new Blob([data], { type: type });
+            //     if (window.navigator.msSaveOrOpenBlob) // IE10+
+            //         window.navigator.msSaveOrOpenBlob(file, filename);
+            //     else { // Others
+            //         var a = document.createElement("a"),
+            //             url = URL.createObjectURL(file);
+            //         a.href = url;
+            //         a.download = filename;
+            //         document.body.appendChild(a);
+            //         a.click();
+            //         setTimeout(function () {
+            //             document.body.removeChild(a);
+            //             window.URL.revokeObjectURL(url);
+            //         }, 0);
+            //     }
+            // }
 
-            var text = "# Number of splines: \n"
-            text += bsplineEditor.splines.length + "\n"
-            for (var i = 0; i < bsplineEditor.splines.length; ++i) {
-                text += "\n# BSpline " + i + "\n";
-                text += "# Degree: \n";
-                text += bsplineEditor.splines[i].getDegree() + "\n";
-                text += "# Number of control points: \n";
-                text += bsplineEditor.splines[i].getNumCtlPoints() + "\n";
-                text += "# Control point data: \n";
-                for (var j = 0; j < bsplineEditor.splines[i].getNumCtlPoints(); ++j) {
-                    text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 0] + "    ";
-                    text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 1] + "\n"
-                }
-                text += "# Knot present: \n";
-                text += "1 \n";
-                text += "# Knot data: \n";
-                for (var j = 0; j < bsplineEditor.splines[i].knot_vector.length; ++j) {
-                    text += bsplineEditor.splines[i].knot_vector[j] + " ";
-                }
-                text += "\n";
-            }
-            download(text, $scope.settings.designName + ".dat", "text");
+            // var text = "# Number of splines: \n"
+            // text += bsplineEditor.splines.length + "\n"
+            // for (var i = 0; i < bsplineEditor.splines.length; ++i) {
+            //     text += "\n# BSpline " + i + "\n";
+            //     text += "# Degree: \n";
+            //     text += bsplineEditor.splines[i].getDegree() + "\n";
+            //     text += "# Number of control points: \n";
+            //     text += bsplineEditor.splines[i].getNumCtlPoints() + "\n";
+            //     text += "# Control point data: \n";
+            //     for (var j = 0; j < bsplineEditor.splines[i].getNumCtlPoints(); ++j) {
+            //         text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 0] + "    ";
+            //         text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 1] + "\n"
+            //     }
+            //     text += "# Knot present: \n";
+            //     text += "1 \n";
+            //     text += "# Knot data: \n";
+            //     for (var j = 0; j < bsplineEditor.splines[i].knot_vector.length; ++j) {
+            //         text += bsplineEditor.splines[i].knot_vector[j] + " ";
+            //     }
+            //     text += "\n";
+            // }
+            // download(text, $scope.settings.designName + ".dat", "text");
         };
 
         $scope.renameDesign = function (ev) {
@@ -631,12 +643,13 @@ angular
     })
     .controller('KnotEditorCtrl', function ($scope, $mdToast, $mdBottomSheet, $timeout, $mdDialog) {
         $scope.data = {
+            editingU: bsplineEditor.editingU,
             curve: bsplineEditor.getSelectedBSpline(),
-            degree: bsplineEditor.getSelectedBSpline().getDegree(),
+            degree: (bsplineEditor.editingU) ?  bsplineEditor.getSelectedBSpline().getUDegree() : bsplineEditor.getSelectedBSpline().getVDegree(),
             minDegree: 1,
-            maxDegree: bsplineEditor.getNumCtlPointsOfSelected() - 1,
-            makeOpen: bsplineEditor.getSelectedBSpline().isOpen,
-            makeUniform: bsplineEditor.getSelectedBSpline().isUniform
+            maxDegree: (bsplineEditor.editingU) ? bsplineEditor.getSelectedBSpline().getNumUControlPoints() - 1 : bsplineEditor.getSelectedBSpline().getNumVControlPoints() - 1,
+            makeOpen: (bsplineEditor.editingU) ? bsplineEditor.getSelectedBSpline().is_u_open : bsplineEditor.getSelectedBSpline().is_v_open,
+            makeUniform: (bsplineEditor.editingU) ? bsplineEditor.getSelectedBSpline().is_u_uniform : bsplineEditor.getSelectedBSpline().is_v_uniform
         };
         $timeout(function () {
             knotEditor.initializeWebGL();
@@ -652,7 +665,10 @@ angular
             knotEditorOpen = false;
         });
         $scope.updateDegree = function () {
-            $scope.data.curve.setDegree($scope.data.degree);
+            if ($scope.data.editingU)
+                $scope.data.curve.setUDegree($scope.data.degree);
+            else 
+                $scope.data.curve.setVDegree($scope.data.degree);
             // knotEditor.generateUniformFloatingKnotVector();
             knotEditor.updateBasisFunctions();
             bsplineEditor.backup();
@@ -710,12 +726,42 @@ angular
         }
 
         $scope.updateUniformProperty = function () {
-            $scope.data.curve.setUniformity($scope.data.makeUniform);
+            if (bsplineEditor.editingU)
+                $scope.data.curve.setUUniformity($scope.data.makeUniform);
+            else 
+                $scope.data.curve.setVUniformity($scope.data.makeUniform);
+
             knotEditor.updateBasisFunctions();
         }
 
         $scope.updateOpenProperty = function () {
-            $scope.data.curve.setOpen($scope.data.makeOpen);
+            if (bsplineEditor.editingU)
+                $scope.data.curve.setUOpen($scope.data.makeOpen);
+            else 
+                $scope.data.curve.setVOpen($scope.data.makeOpen);
+
             knotEditor.updateBasisFunctions();
+        }
+
+        $scope.updateEditingUVProperty = function() {
+            bsplineEditor.editingU = $scope.data.editingU;
+            knotEditor.editingU = $scope.data.editingU;
+
+            $scope.data = {
+                editingU: bsplineEditor.editingU,
+                curve: bsplineEditor.getSelectedBSpline(),
+                degree: (bsplineEditor.editingU) ?  bsplineEditor.getSelectedBSpline().getUDegree() : bsplineEditor.getSelectedBSpline().getVDegree(),
+                minDegree: 1,
+                maxDegree: (bsplineEditor.editingU) ? bsplineEditor.getSelectedBSpline().getNumUControlPoints() - 1 : bsplineEditor.getSelectedBSpline().getNumVControlPoints() - 1,
+                makeOpen: (bsplineEditor.editingU) ? bsplineEditor.getSelectedBSpline().is_u_open : bsplineEditor.getSelectedBSpline().is_v_open,
+                makeUniform: (bsplineEditor.editingU) ? bsplineEditor.getSelectedBSpline().is_u_uniform : bsplineEditor.getSelectedBSpline().is_v_uniform
+            }
+            
+            $scope.updateUniformProperty();
+            $scope.updateOpenProperty();
+            $scope.updateDegree();
+            knotEditor.updateBasisFunctions();
+
+
         }
     });

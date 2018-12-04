@@ -1,5 +1,6 @@
 attribute vec2 uv;
 attribute float direction; 
+attribute vec4 color; 
 
 uniform mat4 modelView;
 uniform mat4 projection;
@@ -146,15 +147,6 @@ void main(void) {
     vec3 position = deBoor(uKnotIndex, vKnotIndex, uNow, vNow, uDegree, vDegree);
     vec3 next = deBoor(uKnotIndex, vKnotIndex, uNext, vNext, uDegree, vDegree);
 
-    // vec3 previous = deBoorU(2, uKnotIndex, uPrev, uDegree);
-    // vec3 position = deBoorU(2, uKnotIndex, uNow, uDegree);
-    // vec3 next = deBoorU(2, uKnotIndex, uNext, uDegree);
-
-    // vec3 previous = deBoorV(1, vKnotIndex, vPrev, vDegree);
-    // vec3 position = deBoorV(1, vKnotIndex, vNow, vDegree);
-    // vec3 next = deBoorV(1, vKnotIndex, vNext, vDegree);
-
-
     /* Line drawing code */
     vec2 aspectVec = vec2(aspect, 1.0);
     mat4 projViewModel = projection * modelView;
@@ -200,12 +192,12 @@ void main(void) {
     normal.x /= aspect; // might need to multiply
 
     vec4 offset = vec4(normal * orientation, 0.0, 0.0);
-    gl_Position = currentProjected + offset;
+    gl_Position = currentProjected + offset + vec4(0.0, 0.0, -.0001, 0.0);
     gl_PointSize = 1.0;
 
     normal = normalize(normal);
     // vColor = vec4(1.0, 1.0, 1.0, 1.0);//vec4(abs(normal.x), abs(normal.y), 0.0, 1.0);
-    vColor = vec4(abs(normal.x), 0.0, abs(normal.y), 1.0);
+    vColor = color;//vec4(abs(normal.x), 0.0, abs(normal.y), 1.0);
     // vColor = vec4(1.0, 1.0, 1.0, 1.0);
     // vOffset = offset;
 }

@@ -22,6 +22,8 @@ class BSplineEditor {
         this.touchstart = false;
         this.doubletapped = false;
 
+        this.editingU = true;
+
         /* Editor stuff */
         this.draggingHandle = false;
         this.originalRay = null;
@@ -32,8 +34,8 @@ class BSplineEditor {
         this.viewMatrix = mat4.create();
 
         this.ortho = false;
-        this.near = 0.0001;
-        this.far = 100000.0;
+        this.near = 0.01;
+        this.far = 1000.0;
         this.fovy = 45;
 
         this.x = 0.0;
@@ -748,7 +750,9 @@ class BSplineEditor {
         if (this.selectedBSpline == -1)
             return -1;
         else {
-            return this.splines[this.selectedBSpline].getNumCtlPoints();
+            if (this.editingU)
+                return this.splines[this.selectedBSpline].getNumUControlPoints();
+            else return this.splines[this.selectedBSpline].getNumVControlPoints();
         }
     }
 

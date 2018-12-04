@@ -41,6 +41,8 @@ class BSpline {
 
         let bfsSource = "";
         let bvsSource = "";
+        let bsfsSource = "";
+        let bsvsSource = "";
         let lfsSource = "";
         let lvsSource = "";
 
@@ -60,6 +62,24 @@ class BSpline {
                 bfsSource = result.trim();
             }, error: function (result) {
                 console.log("failed to load BSplineLine.fs with error ");
+                console.log(result);
+            }
+        }));
+        promises.push($.ajax({
+            url: "./Shaders/BSplineSurface.vs",
+            success: function (result) {
+                bsvsSource = result.trim();
+            }, error: function (result) {
+                console.log("failed to load BSplineSurface.vs with error ");
+                console.log(result);
+            }
+        }));
+        promises.push($.ajax({
+            url: "./Shaders/BSplineSurface.fs",
+            success: function (result) {
+                bsfsSource = result.trim();
+            }, error: function (result) {
+                console.log("failed to load BSplineSurface.fs with error ");
                 console.log(result);
             }
         }));
@@ -89,6 +109,7 @@ class BSpline {
                 attribLocations: {
                     uv: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'uv'),
                     direction: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'direction'),
+                    color: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'color'),
                 },
                 uniformLocations: {
                     projection: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'projection'),
@@ -109,6 +130,35 @@ class BSpline {
                     tmaxu: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'tMaxU'),
                     tminv: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'tMinV'),
                     tmaxv: gl.getUniformLocation(BSpline.BSplineShaderProgram, 'tMaxV'),
+                },
+            };
+
+            BSpline.SurfaceShaderProgram = BSpline.InitShaderProgram(gl, bsvsSource, bsfsSource);
+            BSpline.SurfaceProgramInfo = {
+                program: BSpline.SurfaceShaderProgram,
+                attribLocations: {
+                    uv: gl.getAttribLocation(BSpline.SurfaceShaderProgram, 'uv'),
+                    direction: gl.getAttribLocation(BSpline.SurfaceShaderProgram, 'direction'),
+                },
+                uniformLocations: {
+                    projection: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'projection'),
+                    modelView: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'modelView'),
+                    thickness: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'thickness'),
+                    aspect: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'aspect'),
+                    miter: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'miter'),
+                    controlPoints: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'ControlPoints'),
+                    numUControlPoints: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'uNumUControlPoints'),
+                    numVControlPoints: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'uNumVControlPoints'),
+                    uKnotVector: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'uKnotVector'),
+                    vKnotVector: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'vKnotVector'),
+                    uKnotIndex: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'uKnotIndex'),
+                    vKnotIndex: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'vKnotIndex'),
+                    uDegree: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'uDegree'),
+                    vDegree: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'vDegree'),
+                    tminu: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'tMinU'),
+                    tmaxu: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'tMaxU'),
+                    tminv: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'tMinV'),
+                    tmaxv: gl.getUniformLocation(BSpline.SurfaceShaderProgram, 'tMaxV'),
                 },
             };
 
@@ -181,8 +231,8 @@ class BSpline {
         this.show_control_points = true;
         this.thickness = 5.0;
         this.control_points = (obj == null) ? [
-            [-.1, -0.1, 0.0, .1, -0.1, 0.0,],
-            [-.1, 0.1, 0.0, .1, 0.1, 0.0,],
+            [-1, -1, 0.0, 1, -1, 0.0,],
+            [-1, 1, 0.0, 1, 1, 0.0,],
         ] : obj.control_points.slice();
         this.temporary_point = []
 
@@ -193,15 +243,15 @@ class BSpline {
         this.selected_handle = -1;
         this.selected_color = [0.0, 0.0, 0.0, 0.0];
         this.deselected_color = [-.7, -.7, -.7, 0.0];
-        this.is_u_open = (obj == null) ? true : obj.is_u_open;
-        this.is_u_uniform = (obj == null) ? true : obj.is_u_uniform;
-        this.is_v_open = (obj == null) ? true : obj.is_v_open;
-        this.is_v_uniform = (obj == null) ? true : obj.is_v_uniform;
+        this.is_u_open = (obj == null) ? false : obj.is_u_open;
+        this.is_u_uniform = (obj == null) ? false : obj.is_u_uniform;
+        this.is_v_open = (obj == null) ? false : obj.is_v_open;
+        this.is_v_uniform = (obj == null) ? false : obj.is_v_uniform;
         this.u_degree = (obj == null) ? 1 : obj.u_degree;
         this.v_degree = (obj == null) ? 1 : obj.v_degree;
         this.u_knot_vector = (obj == null) ? [0.0, .33, .66, 1.0] : obj.u_knot_vector.slice();
         this.v_knot_vector = (obj == null) ? [0.0, .33, .66, 1.0] : obj.v_knot_vector.slice();
-        this.num_samples = 8;
+        this.num_samples = 16;
 
         let numUControlPoints = this.getNumUControlPoints()
         let numVControlPoints = this.getNumVControlPoints()
@@ -213,7 +263,7 @@ class BSpline {
         if (numUControlPoints != (this.u_knot_vector.length - (this.u_degree + 1))) {
             console.log("Error, U degree/knot_vector/controlPoints mismatch");
         }
-        
+
         this.updateConstraints();
     }
 
@@ -265,11 +315,11 @@ class BSpline {
         this.makeKnotVectorOpen();
     }
 
-// check
-    setDegree(degree) {
+    // check
+    setUDegree(degree) {
         let oldDegree = this.u_degree;
 
-        if ((degree >= 1) && (degree <= this.getNumVControlPoints() - 1))
+        if ((degree >= 1) && (degree <= this.getNumUControlPoints() - 1))
             this.u_degree = degree;
         else return;
 
@@ -278,7 +328,7 @@ class BSpline {
             this.u_knot_vector = [];
         }
 
-        let numKnots = this.getUOrder() + this.getNumVControlPoints();
+        let numKnots = this.getUOrder() + this.getNumUControlPoints();
         if (oldDegree < this.u_degree) {
             for (var i = numKnots - (this.u_degree - oldDegree); i < numKnots; ++i) {
                 this.u_knot_vector.push(i / (numKnots - (1 + this.u_degree - oldDegree)));
@@ -289,6 +339,33 @@ class BSpline {
 
         for (var i = 0; i < numKnots; ++i) {
             this.u_knot_vector[i] /= this.u_knot_vector[this.u_knot_vector.length - 1];
+        }
+        this.updateConstraints();
+    }
+
+    setVDegree(degree) {
+        let oldDegree = this.v_degree;
+
+        if ((degree >= 1) && (degree <= this.getNumVControlPoints() - 1))
+            this.v_degree = degree;
+        else return;
+
+        // this.num_samples = 2 * this.v_degree + 20;
+        if (this.v_knot_vector == undefined) {
+            this.v_knot_vector = [];
+        }
+
+        let numKnots = this.getVOrder() + this.getNumVControlPoints();
+        if (oldDegree < this.v_degree) {
+            for (var i = numKnots - (this.v_degree - oldDegree); i < numKnots; ++i) {
+                this.v_knot_vector.push(i / (numKnots - (1 + this.v_degree - oldDegree)));
+            }
+        } else {
+            this.v_knot_vector = this.v_knot_vector.slice(0, numKnots);
+        }
+
+        for (var i = 0; i < numKnots; ++i) {
+            this.v_knot_vector[i] /= this.v_knot_vector[this.v_knot_vector.length - 1];
         }
         this.updateConstraints();
     }
@@ -443,8 +520,7 @@ class BSpline {
         return this.v_degree + 1;
     }
 
-    updateBuffers(projection, viewMatrix, aspect, time) {
-        /* REFACTOR THIS */
+    updateHandleBuffers(viewMatrix) {
         let invV = mat4.create();
         mat4.invert(invV, viewMatrix);
 
@@ -463,85 +539,26 @@ class BSpline {
 
         let gl = BSpline.gl;
 
-        if (!this.buffers) {
-            this.buffers = []
+        /* Create handle data */
+        if (!this.handleBuffers) {
+            this.handleBuffers = {};
+            this.handleBuffers.Position = gl.createBuffer();
+            this.handleBuffers.Next = gl.createBuffer();
+            this.handleBuffers.Previous = gl.createBuffer();
+            this.handleBuffers.Direction = gl.createBuffer();
+            this.handleBuffers.Indices = gl.createBuffer();
+            this.handleBuffers.Colors = gl.createBuffer();
         }
 
-        for (var s = 0; s < this.getNumUControlPoints(); ++s) {
-            if (this.buffers[s] == undefined) {
-                this.buffers[s] = {};
-                this.buffers[s].uv = gl.createBuffer();
-                this.buffers[s].tDirection = gl.createBuffer();
-                this.buffers[s].controlPointsPosition = gl.createBuffer();
-                this.buffers[s].controlPointsNext = gl.createBuffer();
-                this.buffers[s].controlPointsPrevious = gl.createBuffer();
-                this.buffers[s].controlPointsDirection = gl.createBuffer();
-                this.buffers[s].controlPointsColors = gl.createBuffer();
-
-                this.buffers[s].handlePointsPosition = gl.createBuffer();
-                this.buffers[s].handlePointsNext = gl.createBuffer();
-                this.buffers[s].handlePointsPrevious = gl.createBuffer();
-                this.buffers[s].handlePointsDirection = gl.createBuffer();
-                this.buffers[s].handlePointsIndices = gl.createBuffer();
-                this.buffers[s].handlePointsColors = gl.createBuffer();
-            }
-
-
-            let uv = this.getUVValues();
-
-            /* Double each uv, adding a direction */
-            let tDirection = [];
-            let doubleUVs = [];
-            for (var i = 0; i < uv.length / 2; ++i) {
-                tDirection.push(-1, 1)
-                doubleUVs.push(uv[i * 2 + 0], uv[i * 2 + 1])
-                doubleUVs.push(uv[i * 2 + 0], uv[i * 2 + 1])
-            }
-
-            let next = [];
-            let prev = [];
-            let pos = [];
-            let ctlDirection = []
-            let controlPointColors = []
-
-            /* Creates a line following a fixed U value */
-            for (var i = 0; i < this.getNumVControlPoints(); ++i) {
-                let iprev = Math.max(i - 1, 0);
-                let inext = Math.min(i + 1, this.getNumVControlPoints() - 1);
-                
-                let next_pos = this.getHandlePosFromUV(s, inext);
-                let prev_pos = this.getHandlePosFromUV(s, iprev);
-                let curr_pos = this.getHandlePosFromUV(s, i);
-
-                next.push(next_pos[0], next_pos[1], next_pos[2], next_pos[0], next_pos[1], next_pos[2]);
-                prev.push(prev_pos[0], prev_pos[1], prev_pos[2], prev_pos[0], prev_pos[1], prev_pos[2]);
-                pos.push(curr_pos[0], curr_pos[1], curr_pos[2], curr_pos[0], curr_pos[1], curr_pos[2]);
-
-                controlPointColors.push(1.0, 1.0, 1.0, 1.0);
-                controlPointColors.push(1.0, 1.0, 1.0, 1.0);
-                controlPointColors.push(1.0, 1.0, 1.0, 1.0);
-                
-                ctlDirection.push(-1, 1);
-            }
-
-            /* Create lines for control point handles */
-            // let center = vec3.create();
-            // vec3.set(center, this.control_points[i * 3 + 0], this.control_points[i * 3 + 1], this.control_points[i * 3 + 2])
-            var i = 0;
-            let handlePoints = [];
-            let handlePointsPrev = [];
-            let handlePointsNext = [];
-            let handlePointsDirection = [];
-            let handlePointsIndices = [];
-            let handlePointColors = [];
-            let temppts = this.control_points[s].slice();
-            if (this.temporary_point.length != 0) {
-                temppts.push(this.temporary_point[0], this.temporary_point[1], this.temporary_point[2]);
-            }
-
-            /* For each point on a line following a fixed U */
-            for (var i = 0; i < this.getNumVControlPoints(); ++i) {
-
+        let handlePoints = [];
+        let handlePointsPrev = [];
+        let handlePointsNext = [];
+        let handlePointsDirection = [];
+        let handlePointsIndices = [];
+        let handlePointColors = [];
+        let idxOffset = 0;
+        for (var u_idx = 0; u_idx < this.getNumUControlPoints(); ++u_idx) {
+            for (var v_idx = 0; v_idx < this.getNumVControlPoints(); ++v_idx) {
                 /* For a set of samples following a circle */
                 for (var j = 0; j <= this.handle_samples; ++j) {
                     let jprev = Math.max(j - 1, 0);
@@ -554,7 +571,7 @@ class BSpline {
 
                     /* Customize this if we need to know if a handle is selected. */
                     let rad = this.handle_radius;
-                    let handlePos = this.getHandlePosFromUV(s, i);
+                    let handlePos = this.getHandlePosFromUV(u_idx, v_idx);
 
                     /* For view aligned stuff */
                     let prevDelta = vec3.create();
@@ -592,147 +609,390 @@ class BSpline {
                     handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
 
                     /* Directions */
-                    handlePointsDirection.push(-1, 1 * (this.selected_handle == i) ? 4 : 1);
+                    handlePointsDirection.push(-1, 1 * (this.selected_handle == v_idx) ? 4 : 1);
 
                     /* Colors */
-                    var rgb = hslToRgb(i * (1.0 / this.getNumVControlPoints()), 1., .5);;
+                    var rgb = hslToRgb(v_idx * (1.0 / this.getNumVControlPoints()), 1., .5);;
                     handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
                     handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
 
-                     /* Indices */
-                     if (j != this.handle_samples) {
-                        let offset = 2 * (this.handle_samples + 1) * i; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                    /* Indices */
+                    if (j != this.handle_samples) {
+                        let offset = (2 * (this.handle_samples + 1) * v_idx) + idxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
                         // handlePointsIndices.push((handlePoints.length/3) -  j * 2 + (i * this.handle_samples + 1), j*2+1 + (i * this.handle_samples + 1));
                         /* each two points creates two triangles in our strip. */
                         handlePointsIndices.push(j * 2 + offset, j * 2 + 2 + offset, j * 2 + 1 + offset, j * 2 + 2 + offset, j * 2 + 3 + offset, j * 2 + 1 + offset); // first pt, second pt
                     }
                 }
             }
-
-            // for (var i = 0; i < temppts.length / 3; ++i) {
-            //     for (var j = 0; j < this.handle_samples + 1; ++j) {
-            //         let jprev = Math.max(j - 1, 0);
-            //         let jnext = Math.min(j + 1, this.handle_samples);
-
-            //         let degreePrev = (jprev / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
-            //         let degree = (j / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
-            //         let degreeNext = (jnext / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
-
-            //         let rad = (i == this.selected_handle) ? this.handle_radius * 1.0 : this.handle_radius;
-            //         if ((i == ((temppts.length / 3) - 1)) && (this.temporary_point.length != 0)) {
-            //             rad *= 1.2;
-            //         }
-
-            //         let handlePos = vec3.create();
-            //         if ((i == ((temppts.length / 3) - 1)) && (this.temporary_point.length != 0)) {
-            //             handlePos = vec3.fromValues(this.temporary_point[0], this.temporary_point[1], this.temporary_point[2]);
-            //         } else {
-            //             handlePos = this.getHandlePosFromUV(s, i);
-            //         }
-
-            //         let prevDelta = vec3.create();
-            //         let currDelta = vec3.create();
-            //         let nextDelta = vec3.create();
-            //         let scaledRight = vec3.create();
-            //         let scaledUp = vec3.create();
-
-            //         scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
-            //         scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
-            //         vec3.scale(scaledRight, scaledRight, Math.cos(degreePrev) * rad);
-            //         vec3.scale(scaledUp, scaledUp, Math.sin(degreePrev) * rad);
-            //         vec3.add(prevDelta, scaledRight, scaledUp);
-
-            //         scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
-            //         scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
-            //         vec3.scale(scaledRight, scaledRight, Math.cos(degree) * rad);
-            //         vec3.scale(scaledUp, scaledUp, Math.sin(degree) * rad);
-            //         vec3.add(currDelta, scaledRight, scaledUp);
-
-            //         scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
-            //         scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
-            //         vec3.scale(scaledRight, scaledRight, Math.cos(degreeNext) * rad);
-            //         vec3.scale(scaledUp, scaledUp, Math.sin(degreeNext) * rad);
-            //         vec3.add(nextDelta, scaledRight, scaledUp);
-
-            //         /* Positions */
-            //         handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
-            //         handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
-
-            //         handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
-            //         handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
-
-            //         handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
-            //         handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
-
-            //         /* Directions */
-            //         handlePointsDirection.push(-1, 1 * (this.selected_handle == i) ? 4 : 1);
-
-            //         /* Colors */
-            //         if ((i == ((temppts.length / 3) - 1)) && (this.temporary_point.length != 0)) {
-            //             handlePointColors.push(this.temporaryPointColor[0], this.temporaryPointColor[1], this.temporaryPointColor[2], this.temporaryPointColor[3]);
-            //             handlePointColors.push(this.temporaryPointColor[0], this.temporaryPointColor[1], this.temporaryPointColor[2], this.temporaryPointColor[3]);
-            //             // handlePointColors.push(this.temporaryPointColor[0], this.temporaryPointColor[1], this.temporaryPointColor[2], this.temporaryPointColor[3]);
-            //         }
-            //         else {
-            //             var rgb = hslToRgb(i * (1.0 / this.getNumVControlPoints()), 1., .5);;
-            //             // this.lines[i].color = [rgb[0], rgb[1], rgb[2], 1.0];
-
-            //             handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
-            //             handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
-            //             // handlePointColors.push(1.0, 1.0, 1.0, 1.0);
-            //         }
-
-            //         /* Indices */
-            //         if (j != this.handle_samples) {
-            //             let offset = 2 * (this.handle_samples + 1) * i; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
-            //             // handlePointsIndices.push((handlePoints.length/3) -  j * 2 + (i * this.handle_samples + 1), j*2+1 + (i * this.handle_samples + 1));
-            //             /* each two points creates two triangles in our strip. */
-            //             handlePointsIndices.push(j * 2 + offset, j * 2 + 2 + offset, j * 2 + 1 + offset, j * 2 + 2 + offset, j * 2 + 3 + offset, j * 2 + 1 + offset); // first pt, second pt
-            //         }
-            //     }
-            // }
-
-            /* Control points */
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].tDirection);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(tDirection), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].uv);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(doubleUVs), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsPrevious);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prev), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsPosition);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pos), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsNext);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(next), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsDirection);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ctlDirection), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsColors);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(controlPointColors), gl.STATIC_DRAW)
-
-            /* Handles */
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsPosition);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePoints), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsNext);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsNext), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsPrevious);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsPrev), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsDirection);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsDirection), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers[s].handlePointsIndices);
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(handlePointsIndices), gl.STATIC_DRAW);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsColors);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointColors), gl.STATIC_DRAW)
+            idxOffset = handlePointsIndices[handlePointsIndices.length - 1] + 3;
         }
+
+        /* Upload handle data */
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Position);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePoints), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Next);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsNext), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Previous);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsPrev), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Direction);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsDirection), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.handleBuffers.Indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(handlePointsIndices), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Colors);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointColors), gl.STATIC_DRAW)
+
+        this.handleBuffers.num_indices = handlePointsIndices.length;
+    }
+
+    updateCageBuffers() {
+        let gl = BSpline.gl;
+
+        /* Create control polygon */
+        if (!this.cageBuffers) {
+            this.cageBuffers = {};
+            this.cageBuffers.Position = gl.createBuffer();
+            this.cageBuffers.Next = gl.createBuffer();
+            this.cageBuffers.Previous = gl.createBuffer();
+            this.cageBuffers.Direction = gl.createBuffer();
+            this.cageBuffers.Indices = gl.createBuffer();
+            this.cageBuffers.Colors = gl.createBuffer();
+        }
+
+        let ctlNext = [];
+        let ctlPrev = [];
+        let ctlPos = [];
+        let ctlDirection = []
+        let ctlColors = []
+        let ctlIndices = []
+        let ctlIdxOffset = 0;
+
+        /* Fixed U idx */
+        for (var u_idx = 0; u_idx < this.getNumUControlPoints(); ++u_idx) {
+            for (var v_idx = 0; v_idx < this.getNumVControlPoints(); ++v_idx) {
+                let vprev = Math.max(v_idx - 1, 0);
+                let vnext = Math.min(v_idx + 1, this.getNumVControlPoints() - 1);
+
+                let next_pos = this.getHandlePosFromUV(u_idx, vnext);
+                let prev_pos = this.getHandlePosFromUV(u_idx, vprev);
+                let curr_pos = this.getHandlePosFromUV(u_idx, v_idx);
+
+                ctlNext.push(next_pos[0], next_pos[1], next_pos[2], next_pos[0], next_pos[1], next_pos[2]);
+                ctlPrev.push(prev_pos[0], prev_pos[1], prev_pos[2], prev_pos[0], prev_pos[1], prev_pos[2]);
+                ctlPos.push(curr_pos[0], curr_pos[1], curr_pos[2], curr_pos[0], curr_pos[1], curr_pos[2]);
+
+                ctlColors.push(1.0, 1.0, 1.0, 1.0);
+                ctlColors.push(1.0, 1.0, 1.0, 1.0);
+
+                ctlDirection.push(-1, 1);
+
+                if (v_idx != (this.getNumVControlPoints() - 1)) {
+                    let offset = (2 * (this.getNumVControlPoints()) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+
+                    /* each two points creates two triangles in our strip. */
+                    ctlIndices.push(
+                        v_idx * 2 + offset,
+                        v_idx * 2 + 2 + offset,
+                        v_idx * 2 + 1 + offset,
+                        v_idx * 2 + 2 + offset,
+                        v_idx * 2 + 3 + offset,
+                        v_idx * 2 + 1 + offset); // first pt, second pt
+                }
+            }
+        }
+
+        ctlIdxOffset = (ctlPos.length / 3);
+
+        /* Fixed V idx */
+        for (var v_idx = 0; v_idx < this.getNumVControlPoints(); ++v_idx) {
+            for (var u_idx = 0; u_idx < this.getNumUControlPoints(); ++u_idx) {
+                let uPrev = Math.max(u_idx - 1, 0);
+                let uNext = Math.min(u_idx + 1, this.getNumUControlPoints() - 1);
+
+                let next_pos = this.getHandlePosFromUV(uNext, v_idx);
+                let prev_pos = this.getHandlePosFromUV(uPrev, v_idx);
+                let curr_pos = this.getHandlePosFromUV(u_idx, v_idx);
+
+                ctlNext.push(next_pos[0], next_pos[1], next_pos[2], next_pos[0], next_pos[1], next_pos[2]);
+                ctlPrev.push(prev_pos[0], prev_pos[1], prev_pos[2], prev_pos[0], prev_pos[1], prev_pos[2]);
+                ctlPos.push(curr_pos[0], curr_pos[1], curr_pos[2], curr_pos[0], curr_pos[1], curr_pos[2]);
+
+                ctlColors.push(1.0, 1.0, 1.0, 1.0);
+                ctlColors.push(1.0, 1.0, 1.0, 1.0);
+
+                ctlDirection.push(-1, 1);
+
+                if (u_idx != (this.getNumUControlPoints() - 1)) {
+                    let offset = (2 * (this.getNumUControlPoints()) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                    // ctlIndices.push((handlePoints.length/3) -  u_idx * 2 + (i * this.handle_samples + 1), u_idx*2+1 + (i * this.handle_samples + 1));
+                    /* each two points creates two triangles in our strip. */
+                    ctlIndices.push(
+                        u_idx * 2 + offset,
+                        u_idx * 2 + 2 + offset,
+                        u_idx * 2 + 1 + offset,
+                        u_idx * 2 + 2 + offset,
+                        u_idx * 2 + 3 + offset,
+                        u_idx * 2 + 1 + offset); // first pt, second pt
+                }
+            }
+        }
+
+        /* Upload cage data */
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Previous);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ctlPrev), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Position);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ctlPos), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Next);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ctlNext), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Direction);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ctlDirection), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Colors);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ctlColors), gl.STATIC_DRAW)
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cageBuffers.Indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(ctlIndices), gl.STATIC_DRAW);
+
+        this.cageBuffers.num_indices = ctlIndices.length;
+    }
+
+    updateCurveBuffers() {
+        let gl = BSpline.gl;
+
+        /* Create surface data */
+        if (!this.curveBuffers) {
+            this.curveBuffers = {};
+            this.curveBuffers.uv = gl.createBuffer();
+            this.curveBuffers.directions = gl.createBuffer();
+            this.curveBuffers.colors = gl.createBuffer();
+            this.curveBuffers.indices = gl.createBuffer();
+        }
+
+        /* Upload UV values */
+        let uv = []
+        let direction = [];
+        let indices = [];
+        let colors = [];
+        let ctlIdxOffset = 0;
+
+        let numU = 4;
+        let numV = 4;
+
+        /* Lines with fixed U */
+        for (var u_idx = 0; u_idx < numU; ++u_idx) {
+            for (var s = 0; s <= this.num_samples; ++s) {
+                uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
+                uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
+                direction.push(-1, 1)
+                colors.push(0.0, .0, .0, 1.0);
+                colors.push(.0, .0, .0, 1.0);
+                if (s != this.num_samples) {
+                    let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+    
+                    /* each two points creates two triangles in our strip. */
+                    indices.push(
+                        s * 2 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 1 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 3 + offset,
+                        s * 2 + 1 + offset); // first pt, second pt
+                }
+            }
+        }
+
+        ctlIdxOffset = (uv.length / 2);
+
+        /* Lines with fixed V */
+        for (var v_idx = 0; v_idx < numV; ++v_idx) {
+            for (var s = 0; s <= this.num_samples; ++s) {
+                uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
+                uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
+                direction.push(-1, 1)
+                colors.push(0.0, .0, .0, 1.0);
+                colors.push(0.0, .0, .0, 1.0);
+                if (s != this.num_samples) {
+                    let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                    // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
+                    /* each two points creates two triangles in our strip. */
+                    indices.push(
+                        s * 2 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 1 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 3 + offset,
+                        s * 2 + 1 + offset); // first pt, second pt
+                }
+            }
+        }
+
+        ctlIdxOffset = (uv.length / 2);
+
+        /* Knot Values */
+        for (var u_idx = 0; u_idx <= 1; ++u_idx) {
+            for (var s = 0; s <= this.num_samples; ++s) {
+                uv.push(u_idx, s / this.num_samples);
+                uv.push(u_idx, s / this.num_samples);
+                direction.push(-1, 1)
+                colors.push(1.0, .0, .0, 1.0);
+                colors.push(1.0, .0, .0, 1.0);
+                if (s != this.num_samples) {
+                    let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+    
+                    /* each two points creates two triangles in our strip. */
+                    indices.push(
+                        s * 2 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 1 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 3 + offset,
+                        s * 2 + 1 + offset); // first pt, second pt
+                }
+            }
+        }
+
+        ctlIdxOffset = (uv.length / 2);
+
+        for (var v_idx = 0; v_idx <= 1; ++v_idx) {
+            for (var s = 0; s <= this.num_samples; ++s) {
+                uv.push(s / this.num_samples, v_idx);
+                uv.push(s / this.num_samples, v_idx);
+                direction.push(-1, 1)
+                colors.push(1.0, .0, .0, 1.0);
+                colors.push(1.0, .0, .0, 1.0);
+                if (s != this.num_samples) {
+                    let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                    // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
+                    /* each two points creates two triangles in our strip. */
+                    indices.push(
+                        s * 2 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 1 + offset,
+                        s * 2 + 2 + offset,
+                        s * 2 + 3 + offset,
+                        s * 2 + 1 + offset); // first pt, second pt
+                }
+            }
+        }
+
+        /* Compute node values */
+        let uNodes = [];
+        for (var i = 0; i < this.u_knot_vector.length - this.u_degree; ++i) {
+            let node = 0;
+            for (var n = 1; n <= this.u_degree; ++n) {
+                node += this.u_knot_vector[i + n];
+            }
+            node /= this.u_degree;
+            uNodes.push(node);
+        }
+
+        let vNodes = [];
+        for (var i = 0; i < this.v_knot_vector.length - this.v_degree; ++i) {
+            let node = 0;
+            for (var n = 1; n <= this.v_degree; ++n) {
+                node += this.v_knot_vector[i + n];
+            }
+            node /= this.v_degree;
+            vNodes.push(node);
+        }
+        
+
+        /* Upload Surface Data */
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.uv);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.directions);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(direction), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.colors);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+        this.curveBuffers.num_verticies = ( uv.length / 2 );
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.curveBuffers.indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+        this.curveBuffers.num_indices = indices.length;
+    }
+
+    updateSurfaceBuffers() {
+        let gl = BSpline.gl;
+
+        /* Create surface data */
+        if (!this.surfaceBuffers) {
+            this.surfaceBuffers = {};
+            this.surfaceBuffers.uv = gl.createBuffer();
+        }
+
+        /* Upload UV values */
+        let uv = []
+        for (let y = 0; y < this.num_samples; ++y) {
+            for (let x = 0; x < this.num_samples; ++x) {
+                if (y % 2 == 0) {
+                    // 0
+                    uv.push(x / (this.num_samples));
+                    uv.push(y / (this.num_samples));
+                    // 1
+                    uv.push((x + 1) / (this.num_samples));
+                    uv.push((y + 1) / (this.num_samples));
+                    // 2
+                    uv.push((x + 1) / (this.num_samples));
+                    uv.push(y / (this.num_samples));
+                    // 3
+                    uv.push(x / (this.num_samples));
+                    uv.push(y / (this.num_samples));
+                    // 4
+                    uv.push(x / (this.num_samples));
+                    uv.push((y + 1) / (this.num_samples));
+                    // 5
+                    uv.push((x + 1) / (this.num_samples));
+                    uv.push((y + 1) / (this.num_samples));
+                } else {
+                    // 0
+                    uv.push((((this.num_samples - 1) - x) + 1) / (this.num_samples));
+                    uv.push(y / (this.num_samples));
+                    // 1
+                    uv.push((((this.num_samples - 1) - x)) / (this.num_samples));
+                    uv.push((y + 1) / (this.num_samples));
+                    // 2
+                    uv.push((((this.num_samples - 1) - x)) / (this.num_samples));
+                    uv.push((y) / (this.num_samples));
+                    // 3
+                    uv.push((((this.num_samples - 1) - x) + 1) / (this.num_samples));
+                    uv.push(y / (this.num_samples));
+                    // 4
+                    uv.push((((this.num_samples - 1) - x) + 1) / (this.num_samples));
+                    uv.push((y + 1) / (this.num_samples));
+                    // 5
+                    uv.push((((this.num_samples - 1) - x)) / (this.num_samples));
+                    uv.push((y + 1) / (this.num_samples));
+                }
+
+            }
+        }
+
+        /* Upload Surface Data */
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.surfaceBuffers.uv);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
+
+        this.surfaceBuffers.num_verticies = 6 * this.num_samples * this.num_samples;
+    }
+
+    updateBuffers(projection, viewMatrix, aspect, time) {
+        let gl = BSpline.gl;
+
+        this.updateHandleBuffers(viewMatrix);
+        this.updateCageBuffers();
+        this.updateCurveBuffers();
+        this.updateSurfaceBuffers();
     }
 
     getTValues() {
@@ -830,8 +1090,8 @@ class BSpline {
             for (var v_idx = 0; v_idx < this.getNumVControlPoints(); ++v_idx) {
                 /* Ray sphere intersection here... */
                 let handle_pos = this.getHandlePosFromUV(u_idx, v_idx);
-                let result = this.intersectSphere(ray.pos, ray.dir, 
-                    [handle_pos[0], handle_pos[1], handle_pos[2]], 
+                let result = this.intersectSphere(ray.pos, ray.dir,
+                    [handle_pos[0], handle_pos[1], handle_pos[2]],
                     this.handle_radius * 1.5);
 
                 if (result == true)
@@ -907,6 +1167,7 @@ class BSpline {
     // }
 
     getInsertionLocation(ray, viewMatrix, projectionMatrix, insertionMode) {
+        return -1;
         let insertion = {
             pos: [0, 0, 0],
             delta: [0, 0, 0],
@@ -934,9 +1195,9 @@ class BSpline {
             insertion.referenceU = 0
             insertion.referenceV = insertion.insertV - 1;
             /* TODO: Should search to determine closest v point */
-            vec3.subtract(insertionDelta, insertionPos, 
-                [this.control_points[0][insertion.referenceV * 3 + 0], 
-                this.control_points[0][insertion.referenceV * 3 + 1], 
+            vec3.subtract(insertionDelta, insertionPos,
+                [this.control_points[0][insertion.referenceV * 3 + 0],
+                this.control_points[0][insertion.referenceV * 3 + 1],
                 this.control_points[0][insertion.referenceV * 3 + 2]]);
 
             insertion.vknot = 1.5;
@@ -944,7 +1205,7 @@ class BSpline {
         }
         /* V insertion (first) */
         else if (insertionMode == 1) {
-            let distance = vec3.dist(ray.pos, this.getHandlePosFromUV(0, this.getNumVControlPoints()-1));
+            let distance = vec3.dist(ray.pos, this.getHandlePosFromUV(0, this.getNumVControlPoints() - 1));
             insertionPos = vec3.fromValues(ray.dir[0], ray.dir[1], ray.dir[2]);
             vec3.scale(insertionPos, insertionPos, distance);
             vec3.add(insertionPos, insertionPos, ray.pos);
@@ -954,9 +1215,9 @@ class BSpline {
             insertion.referenceU = 0
             insertion.referenceV = 0;
             /* TODO: Should search to determine closest v point */
-            vec3.subtract(insertionDelta, insertionPos, 
-                [this.control_points[0][0], 
-                this.control_points[0][1], 
+            vec3.subtract(insertionDelta, insertionPos,
+                [this.control_points[0][0],
+                this.control_points[0][1],
                 this.control_points[0][2]]);
             insertion.delta = insertionDelta;
 
@@ -975,9 +1236,9 @@ class BSpline {
             insertion.referenceU = 0
             insertion.referenceV = 0;
             /* TODO: Should search to determine closest v point */
-            vec3.subtract(insertionDelta, insertionPos, 
-                [this.control_points[insertion.referenceU][0], 
-                this.control_points[insertion.referenceU][1], 
+            vec3.subtract(insertionDelta, insertionPos,
+                [this.control_points[insertion.referenceU][0],
+                this.control_points[insertion.referenceU][1],
                 this.control_points[insertion.referenceU]][2]);
 
             insertion.uknot = 1.5;
@@ -986,7 +1247,7 @@ class BSpline {
 
         /* U insertion (fisrt) */
         else if (insertionMode == 3) {
-            let distance = vec3.dist(ray.pos, this.getHandlePosFromUV(this.getNumUControlPoints()-1, 0));
+            let distance = vec3.dist(ray.pos, this.getHandlePosFromUV(this.getNumUControlPoints() - 1, 0));
             insertionPos = vec3.fromValues(ray.dir[0], ray.dir[1], ray.dir[2]);
             vec3.scale(insertionPos, insertionPos, distance);
             vec3.add(insertionPos, insertionPos, ray.pos);
@@ -996,9 +1257,9 @@ class BSpline {
             insertion.referenceU = insertion.insertU - 1;
             insertion.referenceV = 0;
             /* TODO: Should search to determine closest v point */
-            vec3.subtract(insertionDelta, insertionPos, 
-                [this.control_points[insertion.referenceU][0], 
-                this.control_points[insertion.referenceU][1], 
+            vec3.subtract(insertionDelta, insertionPos,
+                [this.control_points[insertion.referenceU][0],
+                this.control_points[insertion.referenceU][1],
                 this.control_points[insertion.referenceU][2]]);
             insertion.delta = insertionDelta;
 
@@ -1106,6 +1367,7 @@ class BSpline {
     }
 
     addHandle(insertion_data) {
+        return -1;
 
         // let pos = insertion_data.pos;
         let uknot = insertion_data.uknot;
@@ -1115,8 +1377,8 @@ class BSpline {
         if (insertion_data.insertionMode < 2) {
             for (var v_idx = 0; v_idx < this.getNumVControlPoints(); ++v_idx) {
                 var pos = vec3.fromValues(
-                    this.control_points[insertion_data.referenceU][v_idx * 3 + 0], 
-                    this.control_points[insertion_data.referenceU][v_idx * 3 + 1], 
+                    this.control_points[insertion_data.referenceU][v_idx * 3 + 0],
+                    this.control_points[insertion_data.referenceU][v_idx * 3 + 1],
                     this.control_points[insertion_data.referenceU][v_idx * 3 + 2]);
 
                 vec3.add(pos, pos, insertion_data.delta);
@@ -1130,8 +1392,8 @@ class BSpline {
             let newPts = [];
             for (var u_idx = 0; u_idx < this.getNumUControlPoints(); ++u_idx) {
                 var pos = vec3.fromValues(
-                    this.control_points[u_idx][insertion_data.referenceV * 3 + 0], 
-                    this.control_points[u_idx][insertion_data.referenceV * 3 + 1], 
+                    this.control_points[u_idx][insertion_data.referenceV * 3 + 0],
+                    this.control_points[u_idx][insertion_data.referenceV * 3 + 1],
                     this.control_points[u_idx][insertion_data.referenceV * 3 + 2]);
 
                 vec3.add(pos, pos, insertion_data.delta);
@@ -1145,6 +1407,7 @@ class BSpline {
     }
 
     setTemporaryHandle(pos, r, g, b, a) {
+        return -1;
         this.temporary_point = [pos[0], pos[1], pos[2]]
         this.temporaryPointColor = [r, g, b, a]
     }
@@ -1158,31 +1421,29 @@ class BSpline {
         let pos = vec4.create();
         let u = this.getU(idx);
         let v = this.getV(idx);
-        vec4.set(pos, 
-            this.control_points[u][3 * v + 0], 
-            this.control_points[u][3 * v + 1], 
+        vec4.set(pos,
+            this.control_points[u][3 * v + 0],
+            this.control_points[u][3 * v + 1],
             this.control_points[u][3 * v + 2], 1.0);
         return pos;
     }
 
     getHandlePosFromUV(u, v) {
         let pos = vec4.create();
-        vec4.set(pos, 
-            this.control_points[u][3 * v + 0], 
+        vec4.set(pos,
+            this.control_points[u][3 * v + 0],
             this.control_points[u][3 * v + 1],
             this.control_points[u][3 * v + 2], 1.0);
         return pos;
     }
 
-    drawBSpline(projection, modelView, aspect, time) {
+    drawCurves(projection, modelView, aspect, time) {
         let gl = BSpline.gl;
         if (!BSpline.BSplineShaderProgram) return;
 
         /* K is the knot interval containing x. It starts at degree, and ends at the last interval of the knot. */
-        for (var ku = this.u_degree, kuu = 0; ku < this.u_knot_vector.length - (this.u_degree + 1); ++ku, ++kuu) 
-        {
-            for (var kv = this.v_degree, kvv = 0; kv < this.v_knot_vector.length - (this.v_degree + 1); ++kv, ++kvv) 
-            {
+        for (var ku = this.u_degree, kuu = 0; ku < this.u_knot_vector.length - (this.u_degree + 1); ++ku, ++kuu) {
+            for (var kv = this.v_degree, kvv = 0; kv < this.v_knot_vector.length - (this.v_degree + 1); ++kv, ++kvv) {
                 // t values
                 {
                     const numComponents = 2;
@@ -1190,7 +1451,7 @@ class BSpline {
                     const normalize = false;
                     const stride = 0;
                     const offset = 0;
-                    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[0].uv);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.uv);
                     gl.vertexAttribPointer(
                         BSpline.BSplineProgramInfo.attribLocations.uv,
                         numComponents,
@@ -1209,7 +1470,7 @@ class BSpline {
                     const normalize = false;
                     const stride = 0;
                     const offset = 0;
-                    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[0].tDirection);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.directions);
                     gl.vertexAttribPointer(
                         BSpline.BSplineProgramInfo.attribLocations.direction,
                         numComponents,
@@ -1219,6 +1480,25 @@ class BSpline {
                         offset);
                     gl.enableVertexAttribArray(
                         BSpline.BSplineProgramInfo.attribLocations.direction);
+                }
+                
+                // colors
+                {
+                    const numComponents = 4;
+                    const type = gl.FLOAT;
+                    const normalize = false;
+                    const stride = 0;
+                    const offset = 0;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.colors);
+                    gl.vertexAttribPointer(
+                        BSpline.BSplineProgramInfo.attribLocations.color,
+                        numComponents,
+                        type,
+                        normalize,
+                        stride,
+                        offset);
+                    gl.enableVertexAttribArray(
+                        BSpline.BSplineProgramInfo.attribLocations.color);
                 }
 
 
@@ -1313,8 +1593,12 @@ class BSpline {
                     this.getVOrder());
 
                 {
-                    const vertexCount = (this.num_samples * 2 * 6) * this.num_samples;
-                    gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
+                    // const vertexCount = (this.num_samples * 2 * 6) * this.num_samples;
+                    // gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.curveBuffers.num_verticies);
+                    const type = gl.UNSIGNED_SHORT;
+                    const offset = 0;
+                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.curveBuffers.indices);
+                    gl.drawElements(gl.TRIANGLES, this.curveBuffers.num_indices, type, offset);
                 }
 
             }
@@ -1322,287 +1606,429 @@ class BSpline {
 
     }
 
-    drawControlPoints(projection, modelView, aspect, time) {
+    drawSurface(projection, modelView, aspect, time) {
+        let gl = BSpline.gl;
+        if (!BSpline.SurfaceShaderProgram) return;
+
+        /* K is the knot interval containing x. It starts at degree, and ends at the last interval of the knot. */
+        for (var ku = this.u_degree, kuu = 0; ku < this.u_knot_vector.length - (this.u_degree + 1); ++ku, ++kuu) {
+            for (var kv = this.v_degree, kvv = 0; kv < this.v_knot_vector.length - (this.v_degree + 1); ++kv, ++kvv) {
+                // t values
+                {
+                    const numComponents = 2;
+                    const type = gl.FLOAT;
+                    const normalize = false;
+                    const stride = 0;
+                    const offset = 0;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.surfaceBuffers.uv);
+                    gl.vertexAttribPointer(
+                        BSpline.SurfaceProgramInfo.attribLocations.uv,
+                        numComponents,
+                        type,
+                        normalize,
+                        stride,
+                        offset);
+                    gl.enableVertexAttribArray(
+                        BSpline.SurfaceProgramInfo.attribLocations.uv);
+                }
+
+                // // direction
+                // {
+                //     const numComponents = 1;
+                //     const type = gl.FLOAT;
+                //     const normalize = false;
+                //     const stride = 0;
+                //     const offset = 0;
+                //     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[0].tDirection);
+                //     gl.vertexAttribPointer(
+                //         BSpline.SurfaceProgramInfo.attribLocations.direction,
+                //         numComponents,
+                //         type,
+                //         normalize,
+                //         stride,
+                //         offset);
+                //     gl.enableVertexAttribArray(
+                //         BSpline.SurfaceProgramInfo.attribLocations.direction);
+                // }
+
+
+                // Tell WebGL to use our program when drawing
+                gl.useProgram(BSpline.SurfaceProgramInfo.program);
+
+                // Set the shader uniforms
+                gl.uniformMatrix4fv(
+                    BSpline.SurfaceProgramInfo.uniformLocations.projection,
+                    false,
+                    projection);
+
+                gl.uniformMatrix4fv(
+                    BSpline.SurfaceProgramInfo.uniformLocations.modelView,
+                    false,
+                    modelView);
+
+                gl.uniform1f(
+                    BSpline.SurfaceProgramInfo.uniformLocations.thickness,
+                    this.thickness);
+
+                gl.uniform1f(
+                    BSpline.SurfaceProgramInfo.uniformLocations.aspect,
+                    aspect);
+
+                gl.uniform1i(
+                    BSpline.SurfaceProgramInfo.uniformLocations.miter,
+                    0);
+
+                gl.uniform1i(
+                    BSpline.SurfaceProgramInfo.uniformLocations.uKnotIndex,
+                    ku); // I think this goes from degree to knot_vector_length
+
+                gl.uniform1i(
+                    BSpline.SurfaceProgramInfo.uniformLocations.vKnotIndex,
+                    kv); // I think this goes from degree to knot_vector_length
+
+                gl.uniform1i(
+                    BSpline.SurfaceProgramInfo.uniformLocations.uDegree,
+                    this.u_degree);
+
+                gl.uniform1i(
+                    BSpline.SurfaceProgramInfo.uniformLocations.vDegree,
+                    this.v_degree);
+
+                gl.uniform1fv(
+                    BSpline.SurfaceProgramInfo.uniformLocations.uKnotVector,
+                    new Float32Array(this.u_knot_vector)
+                );
+
+                gl.uniform1fv(
+                    BSpline.SurfaceProgramInfo.uniformLocations.vKnotVector,
+                    new Float32Array(this.v_knot_vector)
+                );
+
+                gl.uniform1f(
+                    BSpline.SurfaceProgramInfo.uniformLocations.tminu,
+                    this.u_knot_vector[ku]);
+
+                gl.uniform1f(
+                    BSpline.SurfaceProgramInfo.uniformLocations.tmaxu,
+                    this.u_knot_vector[ku + 1]);
+
+                gl.uniform1f(
+                    BSpline.SurfaceProgramInfo.uniformLocations.tminv,
+                    this.v_knot_vector[kv]);
+
+                gl.uniform1f(
+                    BSpline.SurfaceProgramInfo.uniformLocations.tmaxv,
+                    this.v_knot_vector[kv + 1]);
+
+                /* Extract temporary control points */
+                let tCtlPts = [];
+                for (var ui = 0; ui < this.getUOrder(); ++ui) {
+                    for (var vi = 0; vi < this.getVOrder(); ++vi) {
+                        let p = this.getHandlePosFromUV(ui + kuu, vi + kvv);
+                        tCtlPts.push(p[0], p[1], p[2])
+                    }
+                }
+
+                gl.uniform3fv(
+                    BSpline.SurfaceProgramInfo.uniformLocations.controlPoints,
+                    new Float32Array(tCtlPts));
+
+                /* The temporary control point count is degree + 1 */
+                gl.uniform1i(
+                    BSpline.SurfaceProgramInfo.uniformLocations.numUControlPoints,
+                    this.getUOrder());
+
+                gl.uniform1i(
+                    BSpline.SurfaceProgramInfo.uniformLocations.numVControlPoints,
+                    this.getVOrder());
+
+                {
+                    gl.drawArrays(gl.TRIANGLES, 0, this.surfaceBuffers.num_verticies);
+                }
+
+            }
+
+        }
+
+    }
+
+    drawHandles(projection, modelView, aspect, time) {
         let gl = BSpline.gl;
 
         if (!BSpline.LineShaderProgram) return;
-        for (var s = 0; s < this.getNumUControlPoints(); ++s) {
 
-            // position values
-            {
-                const numComponents = 3;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsPosition);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.position,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.position);
-            }
+        // position values
+        {
+            const numComponents = 3;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Position);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.position,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.position);
+        }
 
-            // previous values
-            {
-                const numComponents = 3;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsPrevious);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.previous,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.previous);
-            }
+        // previous values
+        {
+            const numComponents = 3;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Previous);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.previous,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.previous);
+        }
 
-            // next values
-            {
-                const numComponents = 3;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsNext);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.next,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.next);
-            }
+        // next values
+        {
+            const numComponents = 3;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Next);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.next,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.next);
+        }
 
-            // direction
-            {
-                const numComponents = 1;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsDirection);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.direction,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.direction);
-            }
+        // direction
+        {
+            const numComponents = 1;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Direction);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.direction,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.direction);
+        }
 
-            // color values
-            {
-                const numComponents = 4;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].handlePointsColors);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.color,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.color);
-            }
+        // color values
+        {
+            const numComponents = 4;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Colors);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.color,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.color);
+        }
 
 
-            // Tell WebGL to use our program when drawing
-            gl.useProgram(BSpline.LineProgramInfo.program);
+        // Tell WebGL to use our program when drawing
+        gl.useProgram(BSpline.LineProgramInfo.program);
 
-            // Set the shader uniforms
-            gl.uniformMatrix4fv(
-                BSpline.LineProgramInfo.uniformLocations.projection,
-                false,
-                projection);
+        // Set the shader uniforms
+        gl.uniformMatrix4fv(
+            BSpline.LineProgramInfo.uniformLocations.projection,
+            false,
+            projection);
 
-            gl.uniformMatrix4fv(
-                BSpline.LineProgramInfo.uniformLocations.modelView,
-                false,
-                modelView);
+        gl.uniformMatrix4fv(
+            BSpline.LineProgramInfo.uniformLocations.modelView,
+            false,
+            modelView);
 
-            gl.uniform1f(
-                BSpline.LineProgramInfo.uniformLocations.thickness,
-                this.handle_thickness);
+        gl.uniform1f(
+            BSpline.LineProgramInfo.uniformLocations.thickness,
+            this.handle_thickness);
 
-            gl.uniform1f(
-                BSpline.LineProgramInfo.uniformLocations.aspect,
-                aspect);
+        gl.uniform1f(
+            BSpline.LineProgramInfo.uniformLocations.aspect,
+            aspect);
 
-            gl.uniform1i(
-                BSpline.LineProgramInfo.uniformLocations.miter,
-                0);
+        gl.uniform1i(
+            BSpline.LineProgramInfo.uniformLocations.miter,
+            0);
 
-            gl.uniform4fv(
-                BSpline.LineProgramInfo.uniformLocations.color,
-                this.selected ? this.selected_color : this.deselected_color);
+        gl.uniform4fv(
+            BSpline.LineProgramInfo.uniformLocations.color,
+            this.selected ? this.selected_color : this.deselected_color);
 
-            {
-                const vertexCount = (this.handle_samples * 6) * ((this.control_points[s].length + this.temporary_point.length) / 3);
-                const type = gl.UNSIGNED_SHORT;
-                const offset = 0;
-                // gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers[s].handlePointsIndices);
-                gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
-            }
+        {
+            const type = gl.UNSIGNED_SHORT;
+            const offset = 0;
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.handleBuffers.Indices);
+            gl.drawElements(gl.TRIANGLES, this.handleBuffers.num_indices, type, offset);
         }
     }
 
-    drawControlPolygon(projection, modelView, aspect, time) {
+    drawControlCage(projection, modelView, aspect, time) {
         let gl = BSpline.gl;
 
         if (!BSpline.LineShaderProgram) return;
 
-        /* All u curves (TEMPORARY) */
-        for (var s = 0; s < this.getNumUControlPoints(); ++s) {
-            // position values
-            {
-                const numComponents = 3;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsPosition);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.position,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.position);
-            }
+        // position values
+        {
+            const numComponents = 3;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Position);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.position,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.position);
+        }
 
-            // previous values
-            {
-                const numComponents = 3;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsPrevious);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.previous,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.previous);
-            }
+        // previous values
+        {
+            const numComponents = 3;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Previous);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.previous,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.previous);
+        }
 
-            // next values
-            {
-                const numComponents = 3;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsNext);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.next,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.next);
-            }
+        // next values
+        {
+            const numComponents = 3;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Next);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.next,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.next);
+        }
 
-            // direction
-            {
-                const numComponents = 1;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsDirection);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.direction,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.direction);
-            }
+        // direction
+        {
+            const numComponents = 1;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Direction);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.direction,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.direction);
+        }
 
-            // color values
-            {
-                const numComponents = 4;
-                const type = gl.FLOAT;
-                const normalize = false;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[s].controlPointsColors);
-                gl.vertexAttribPointer(
-                    BSpline.LineProgramInfo.attribLocations.color,
-                    numComponents,
-                    type,
-                    normalize,
-                    stride,
-                    offset);
-                gl.enableVertexAttribArray(
-                    BSpline.LineProgramInfo.attribLocations.color);
-            }
+        // color values
+        {
+            const numComponents = 4;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.cageBuffers.Colors);
+            gl.vertexAttribPointer(
+                BSpline.LineProgramInfo.attribLocations.color,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                BSpline.LineProgramInfo.attribLocations.color);
+        }
 
 
-            // Tell WebGL to use our program when drawing
-            gl.useProgram(BSpline.LineProgramInfo.program);
+        // Tell WebGL to use our program when drawing
+        gl.useProgram(BSpline.LineProgramInfo.program);
 
-            // Set the shader uniforms
-            gl.uniformMatrix4fv(
-                BSpline.LineProgramInfo.uniformLocations.projection,
-                false,
-                projection);
+        // Set the shader uniforms
+        gl.uniformMatrix4fv(
+            BSpline.LineProgramInfo.uniformLocations.projection,
+            false,
+            projection);
 
-            gl.uniformMatrix4fv(
-                BSpline.LineProgramInfo.uniformLocations.modelView,
-                false,
-                modelView);
+        gl.uniformMatrix4fv(
+            BSpline.LineProgramInfo.uniformLocations.modelView,
+            false,
+            modelView);
 
-            gl.uniform1f(
-                BSpline.LineProgramInfo.uniformLocations.thickness,
-                this.handle_thickness * .5);
+        gl.uniform1f(
+            BSpline.LineProgramInfo.uniformLocations.thickness,
+            this.handle_thickness * .5);
 
-            gl.uniform1f(
-                BSpline.LineProgramInfo.uniformLocations.aspect,
-                aspect);
+        gl.uniform1f(
+            BSpline.LineProgramInfo.uniformLocations.aspect,
+            aspect);
 
-            gl.uniform1i(
-                BSpline.LineProgramInfo.uniformLocations.miter,
-                1);
+        gl.uniform1i(
+            BSpline.LineProgramInfo.uniformLocations.miter,
+            0);
 
 
-            gl.uniform4fv(
-                BSpline.LineProgramInfo.uniformLocations.color,
-                this.selected ? [-0.4, -0.4, -0.4, 0] : [-0.7, -0.7, -0.7, 0.0]);
+        gl.uniform4fv(
+            BSpline.LineProgramInfo.uniformLocations.color,
+            this.selected ? [-0.4, -0.4, -0.4, 0] : [-0.7, -0.7, -0.7, 0.0]);
 
-            {
-                const vertexCount = (this.control_points[s].length / 3) * 2;
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
-            }
+        {
+            // const vertexCount = 8;//2 * (2 * this.getNumUControlPoints() * this.getNumVControlPoints());
+            const type = gl.UNSIGNED_SHORT;
+            const offset = 0;
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cageBuffers.Indices);
+            gl.drawElements(gl.TRIANGLES, this.cageBuffers.num_indices, type, offset);
         }
 
     }
@@ -1610,18 +2036,28 @@ class BSpline {
     draw(projection, viewMatrix, aspect, time) {
         var gl = BSpline.gl;
 
+        gl.depthFunc(gl.LESS)
+
         this.updateBuffers(projection, viewMatrix, aspect, time);
+        if (this.show_bspline) {
+            this.drawSurface(projection, viewMatrix, aspect, time);
+            // gl.depthFunc(gl.ALWAYS)
+            this.drawCurves(projection, viewMatrix, aspect, time);
+            // gl.depthFunc(gl.LESS)
+        }
+
         if (this.show_control_polygon) {
-            this.drawControlPolygon(projection, viewMatrix, aspect, time);
+            gl.depthFunc(gl.ALWAYS)
+            this.drawControlCage(projection, viewMatrix, aspect, time);
+            gl.depthFunc(gl.LESS)
         }
 
         if (this.show_control_points) {
-            this.drawControlPoints(projection, viewMatrix, aspect, time);
+            gl.depthFunc(gl.ALWAYS)
+            this.drawHandles(projection, viewMatrix, aspect, time);
+            gl.depthFunc(gl.LESS)
         }
 
-        if (this.show_bspline) {
-            this.drawBSpline(projection, viewMatrix, aspect, time);
-        }
     }
 }
 
