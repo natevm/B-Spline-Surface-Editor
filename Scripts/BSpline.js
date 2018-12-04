@@ -256,8 +256,8 @@ class BSpline {
         this.is_v_uniform = (obj == null) ? true : obj.is_v_uniform;
         this.u_degree = (obj == null) ? 2 : obj.u_degree;
         this.v_degree = (obj == null) ? 2 : obj.v_degree;
-        this.u_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0] : obj.u_knot_vector.slice();
-        this.v_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0] : obj.v_knot_vector.slice();
+        this.u_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0, 1.5] : obj.u_knot_vector.slice();
+        this.v_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0, 1.5] : obj.v_knot_vector.slice();
         this.num_samples = 8;
 
         let numUControlPoints = this.getNumUControlPoints()
