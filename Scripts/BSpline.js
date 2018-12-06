@@ -107,7 +107,9 @@ class BSpline {
             BSpline.BSplineProgramInfo = {
                 program: BSpline.BSplineShaderProgram,
                 attribLocations: {
-                    uv: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'uv'),
+                    uvNow: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'uv_now'),
+                    uvPrevious: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'uv_previous'),
+                    uvNext: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'uv_next'),
                     direction: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'direction'),
                     color: gl.getAttribLocation(BSpline.BSplineShaderProgram, 'color'),
                 },
@@ -235,12 +237,7 @@ class BSpline {
         this.show_node_values = true;
 
         this.thickness = 5.0;
-        this.control_points = (obj == null) ? [
-            [-1.5 + dx, -1.5 + dy, dz, -.5 + dx, -1.5 + dy, dz, .5 + dx, -1.5 + dy, dz, 1.5 + dx, -1.5 + dy, dz,],
-            [-1.5 + dx, -.5 + dy, dz, -.5 + dx, -.5 + dy, dz, .5 + dx, -.5 + dy, dz, 1.5 + dx, -.5 + dy, dz,],
-            [-1.5 + dx, .5 + dy, dz, -.5 + dx, .5 + dy, dz, .5 + dx, .5 + dy, dz, 1.5 + dx, .5 + dy, dz,],
-            [-1.5 + dx, 1.5 + dy, dz, -.5 + dx, 1.5 + dy, dz, .5 + dx, 1.5 + dy, dz, 1.5 + dx, 1.5 + dy, dz,],
-        ] : obj.control_points.slice();
+
         this.temporary_point = []
 
         this.handle_radius = 50;
@@ -256,12 +253,38 @@ class BSpline {
         this.is_v_uniform = (obj == null) ? true : obj.is_v_uniform;
         this.u_degree = (obj == null) ? 2 : obj.u_degree;
         this.v_degree = (obj == null) ? 2 : obj.v_degree;
-        this.u_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0, 1.5] : obj.u_knot_vector.slice();
-        this.v_knot_vector = (obj == null) ? [0.0, .2, .4, .6, .8, 1.0, 1.5] : obj.v_knot_vector.slice();
-        this.num_samples = 8;
+
+        this.handle_moved = true;
+        this.curve_moved = true;
+        this.surface_moved = true;
+
+        let xoff = -2.5;
+        let yoff = -2.5;
+        let numx = 5;
+        let numy = 5;
+
+        if (obj == null) {
+            this.control_points = [];
+            for (var i = 0; i < numx; ++i) {
+                this.control_points.push([]);
+                for (var j = 0; j < numy; ++j) {
+                    this.control_points[i].push( i + yoff + dx, Math.cos(((i - 3)/(numx-1)) * 6.0 ) * Math.sin(((j - 3)/(numy-1)) * 6.0 ) + dy, j + xoff + dz);
+                }
+                // this.updateConstraints();
+                this.u_knot_vector = [];
+                this.v_knot_vector = [];
+            }
+        } else {
+            this.control_points = obj.control_points.slice();
+            this.u_knot_vector = obj.u_knot_vector.slice();
+            this.v_knot_vector = obj.v_knot_vector.slice();
+        }
+
+        this.num_samples = 16;
 
         let numUControlPoints = this.getNumUControlPoints()
         let numVControlPoints = this.getNumVControlPoints()
+        this.updateConstraints();
 
         if (numVControlPoints != (this.v_knot_vector.length - (this.v_degree + 1))) {
             console.log("Error, V degree/knot_vector/controlPoints mismatch");
@@ -271,7 +294,6 @@ class BSpline {
             console.log("Error, U degree/knot_vector/controlPoints mismatch");
         }
 
-        this.updateConstraints();
     }
 
     toJSON() {
@@ -320,6 +342,7 @@ class BSpline {
         }
         this.makeKnotVectorUniform();
         this.makeKnotVectorOpen();
+        this.curve_moved = true;
     }
 
     // check
@@ -502,21 +525,25 @@ class BSpline {
     setUUniformity(is_u_uniform) {
         this.is_u_uniform = is_u_uniform;
         this.updateConstraints();
+        this.curve_moved = true;
     }
 
     setVUniformity(is_v_uniform) {
         this.is_v_uniform = is_v_uniform;
         this.updateConstraints();
+        this.curve_moved = true;
     }
 
     setUOpen(is_u_open) {
         this.is_u_open = is_u_open;
         this.updateConstraints();
+        this.curve_moved = true;
     }
 
     setVOpen(is_v_open) {
         this.is_v_open = is_v_open;
         this.updateConstraints();
+        this.curve_moved = true;
     }
 
     getUOrder() {
@@ -528,136 +555,140 @@ class BSpline {
     }
 
     updateHandleBuffers(viewMatrix) {
-        let invV = mat4.create();
-        mat4.invert(invV, viewMatrix);
+        if (this.handle_moved) {
 
-        let cpos = vec3.create();
-        let cright = vec3.create();
-        let cup = vec3.create();
-        let cforward = vec3.create();
+            let invV = mat4.create();
+            mat4.invert(invV, viewMatrix);
 
-        vec3.set(cright, invV[0], invV[1], invV[2]);
-        vec3.set(cup, invV[4], invV[5], invV[6]);
-        vec3.set(cforward, invV[8], invV[9], invV[10]);
-        vec3.set(cpos, invV[12], invV[13], invV[14]);
+            let cpos = vec3.create();
+            let cright = vec3.create();
+            let cup = vec3.create();
+            let cforward = vec3.create();
 
-        vec3.normalize(cright, cright);
-        vec3.normalize(cup, cup);
+            vec3.set(cright, invV[0], invV[1], invV[2]);
+            vec3.set(cup, invV[4], invV[5], invV[6]);
+            vec3.set(cforward, invV[8], invV[9], invV[10]);
+            vec3.set(cpos, invV[12], invV[13], invV[14]);
 
-        let gl = BSpline.gl;
+            vec3.normalize(cright, cright);
+            vec3.normalize(cup, cup);
 
-        /* Create handle data */
-        if (!this.handleBuffers) {
-            this.handleBuffers = {};
-            this.handleBuffers.Position = gl.createBuffer();
-            this.handleBuffers.Next = gl.createBuffer();
-            this.handleBuffers.Previous = gl.createBuffer();
-            this.handleBuffers.Direction = gl.createBuffer();
-            this.handleBuffers.Indices = gl.createBuffer();
-            this.handleBuffers.Colors = gl.createBuffer();
-        }
+            let gl = BSpline.gl;
 
-        let handlePoints = [];
-        let handlePointsPrev = [];
-        let handlePointsNext = [];
-        let handlePointsDirection = [];
-        let handlePointsIndices = [];
-        let handlePointColors = [];
-        let idxOffset = 0;
-        for (var u_idx = 0; u_idx < this.getNumUControlPoints(); ++u_idx) {
-            for (var v_idx = 0; v_idx < this.getNumVControlPoints(); ++v_idx) {
-                /* For a set of samples following a circle */
-                for (var j = 0; j <= this.handle_samples; ++j) {
-                    let jprev = Math.max(j - 1, 0);
-                    let jnext = Math.min(j + 1, this.handle_samples);
+            /* Create handle data */
+            if (!this.handleBuffers) {
+                this.handleBuffers = {};
+                this.handleBuffers.Position = gl.createBuffer();
+                this.handleBuffers.Next = gl.createBuffer();
+                this.handleBuffers.Previous = gl.createBuffer();
+                this.handleBuffers.Direction = gl.createBuffer();
+                this.handleBuffers.Indices = gl.createBuffer();
+                this.handleBuffers.Colors = gl.createBuffer();
+            }
 
-                    /* Compute angles */
-                    let anglePrev = (jprev / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
-                    let angle = (j / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
-                    let angleNext = (jnext / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
+            let handlePoints = [];
+            let handlePointsPrev = [];
+            let handlePointsNext = [];
+            let handlePointsDirection = [];
+            let handlePointsIndices = [];
+            let handlePointColors = [];
+            let idxOffset = 0;
 
-                    /* Customize this if we need to know if a handle is selected. */
-                    let rad = this.handle_radius;
-                    let handlePos = this.getHandlePosFromUV(u_idx, v_idx);
+            let prevDelta = vec3.create();
+            let currDelta = vec3.create();
+            let nextDelta = vec3.create();
+            let scaledRight = vec3.create();
+            let scaledUp = vec3.create();
 
-                    /* For view aligned stuff */
-                    let prevDelta = vec3.create();
-                    let currDelta = vec3.create();
-                    let nextDelta = vec3.create();
-                    let scaledRight = vec3.create();
-                    let scaledUp = vec3.create();
+            scaledRight = vec3.create();
+            scaledUp = vec3.create();
 
-                    scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
-                    scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
-                    vec3.scale(scaledRight, scaledRight, Math.cos(anglePrev) * rad);
-                    vec3.scale(scaledUp, scaledUp, Math.sin(anglePrev) * rad);
-                    vec3.add(prevDelta, scaledRight, scaledUp);
+            for (var u_idx = 0; u_idx < this.getNumUControlPoints(); ++u_idx) {
+                for (var v_idx = 0; v_idx < this.getNumVControlPoints(); ++v_idx) {
+                    /* For a set of samples following a circle */
+                    for (var j = 0; j <= this.handle_samples; ++j) {
+                        let jprev = Math.max(j - 1, 0);
+                        let jnext = Math.min(j + 1, this.handle_samples);
 
-                    scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
-                    scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
-                    vec3.scale(scaledRight, scaledRight, Math.cos(angle) * rad);
-                    vec3.scale(scaledUp, scaledUp, Math.sin(angle) * rad);
-                    vec3.add(currDelta, scaledRight, scaledUp);
+                        /* Compute angles */
+                        let anglePrev = (jprev / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
+                        let angle = (j / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
+                        let angleNext = (jnext / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
 
-                    scaledRight = vec3.fromValues(cright[0], cright[1], cright[2]);
-                    scaledUp = vec3.fromValues(cup[0], cup[1], cup[2]);
-                    vec3.scale(scaledRight, scaledRight, Math.cos(angleNext) * rad);
-                    vec3.scale(scaledUp, scaledUp, Math.sin(angleNext) * rad);
-                    vec3.add(nextDelta, scaledRight, scaledUp);
+                        /* Customize this if we need to know if a handle is selected. */
+                        let rad = this.handle_radius;
+                        let handlePos = this.getHandlePosFromUV(u_idx, v_idx);
 
-                    /* Compute final positions */
-                    handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
-                    handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
-
-                    handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
-                    handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
-
-                    handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
-                    handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
-
-                    /* Directions */
-                    handlePointsDirection.push(-1, 1);
-
-                    /* Colors */
-                    // var rgb = hslToRgb(v_idx * (1.0 / this.getNumVControlPoints()), 1., .5);;
-                    // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
-                    // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
-                    handlePointColors.push(1.0, 1.0, 1.0, 1.0);
-                    handlePointColors.push(1.0, 1.0, 1.0, 1.0);
+                        /* For view aligned stuff */
 
 
-                    /* Indices */
-                    if (j != this.handle_samples) {
-                        let offset = (2 * (this.handle_samples + 1) * v_idx) + idxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
-                        // handlePointsIndices.push((handlePoints.length/3) -  j * 2 + (i * this.handle_samples + 1), j*2+1 + (i * this.handle_samples + 1));
-                        /* each two points creates two triangles in our strip. */
-                        handlePointsIndices.push(j * 2 + offset, j * 2 + 2 + offset, j * 2 + 1 + offset, j * 2 + 2 + offset, j * 2 + 3 + offset, j * 2 + 1 + offset); // first pt, second pt
+                        vec3.scale(scaledRight, [cright[0], cright[1], cright[2]], Math.cos(anglePrev) * rad);
+                        vec3.scale(scaledUp, [cup[0], cup[1], cup[2]], Math.sin(anglePrev) * rad);
+                        vec3.add(prevDelta, scaledRight, scaledUp);
+
+                        vec3.scale(scaledRight, [cright[0], cright[1], cright[2]], Math.cos(angle) * rad);
+                        vec3.scale(scaledUp, [cup[0], cup[1], cup[2]], Math.sin(angle) * rad);
+                        vec3.add(currDelta, scaledRight, scaledUp);
+
+                        vec3.scale(scaledRight, [cright[0], cright[1], cright[2]], Math.cos(angleNext) * rad);
+                        vec3.scale(scaledUp, [cup[0], cup[1], cup[2]], Math.sin(angleNext) * rad);
+                        vec3.add(nextDelta, scaledRight, scaledUp);
+
+                        /* Compute final positions */
+                        handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
+                        handlePointsPrev.push(handlePos[0] + prevDelta[0], handlePos[1] + prevDelta[1], handlePos[2] + prevDelta[2]);
+
+                        handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
+                        handlePoints.push(handlePos[0] + currDelta[0], handlePos[1] + currDelta[1], handlePos[2] + currDelta[2]);
+
+                        handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
+                        handlePointsNext.push(handlePos[0] + nextDelta[0], handlePos[1] + nextDelta[1], handlePos[2] + nextDelta[2]);
+
+                        /* Directions */
+                        handlePointsDirection.push(-1, 1);
+
+                        /* Colors */
+                        // var rgb = hslToRgb(v_idx * (1.0 / this.getNumVControlPoints()), 1., .5);;
+                        // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                        // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                        handlePointColors.push(1.0, 1.0, 1.0, 1.0);
+                        handlePointColors.push(1.0, 1.0, 1.0, 1.0);
+
+
+                        /* Indices */
+                        if (j != this.handle_samples) {
+                            let offset = (2 * (this.handle_samples + 1) * v_idx) + idxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                            // handlePointsIndices.push((handlePoints.length/3) -  j * 2 + (i * this.handle_samples + 1), j*2+1 + (i * this.handle_samples + 1));
+                            /* each two points creates two triangles in our strip. */
+                            handlePointsIndices.push(j * 2 + offset, j * 2 + 2 + offset, j * 2 + 1 + offset, j * 2 + 2 + offset, j * 2 + 3 + offset, j * 2 + 1 + offset); // first pt, second pt
+                        }
                     }
                 }
+                idxOffset = handlePointsIndices[handlePointsIndices.length - 1] + 3;
             }
-            idxOffset = handlePointsIndices[handlePointsIndices.length - 1] + 3;
+
+            /* Upload handle data */
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Position);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePoints), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Next);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsNext), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Previous);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsPrev), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Direction);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsDirection), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.handleBuffers.Indices);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(handlePointsIndices), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Colors);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointColors), gl.STATIC_DRAW)
+
+            this.handleBuffers.num_indices = handlePointsIndices.length;
+            this.handle_moved = true; //  Handles update every frame to be view aligned
         }
-
-        /* Upload handle data */
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Position);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePoints), gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Next);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsNext), gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Previous);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsPrev), gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Direction);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointsDirection), gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.handleBuffers.Indices);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(handlePointsIndices), gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.handleBuffers.Colors);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(handlePointColors), gl.STATIC_DRAW)
-
-        this.handleBuffers.num_indices = handlePointsIndices.length;
     }
 
     updateCageBuffers() {
@@ -775,67 +806,168 @@ class BSpline {
     }
 
     updateCurveBuffers(ku, kv) {
-        let gl = BSpline.gl;
+        if (this.curve_moved) {
+            let gl = BSpline.gl;
 
-        /* Create surface data */
-        if (!this.curveBuffers) {
-            this.curveBuffers = {};
-            this.curveBuffers.uv = gl.createBuffer();
-            this.curveBuffers.directions = gl.createBuffer();
-            this.curveBuffers.colors = gl.createBuffer();
-            this.curveBuffers.indices = gl.createBuffer();
-        }
 
-        /* Upload UV values */
-        let uv = []
-        let direction = [];
-        let indices = [];
-        let colors = [];
-        let ctlIdxOffset = 0;
-
-        let umin = this.u_knot_vector[ku]
-        let umax = this.u_knot_vector[ku + 1]
-        let vmin = this.v_knot_vector[kv]
-        let vmax = this.v_knot_vector[kv + 1]
-        if (this.show_node_values) {
-            /* Compute node values */
-            let uNodes = [];
-            for (var i = 0; i <= this.u_knot_vector.length - this.u_degree; ++i) {
-                let node = 0;
-                for (var n = 1; n <= this.u_degree; ++n) {
-                    node += this.u_knot_vector[i + n];
-                }
-                node /= this.u_degree;
-                uNodes.push(node);
+            /* Create surface data */
+            if (!this.curveBuffers) 
+                this.curveBuffers = {};
+            
+            if (!this.curveBuffers[ku])
+                this.curveBuffers[ku] = {};
+            
+            if (!this.curveBuffers[ku][kv]) {
+                this.curveBuffers[ku][kv] = {};
+                this.curveBuffers[ku][kv].uvNow = gl.createBuffer();
+                this.curveBuffers[ku][kv].uvPrevious = gl.createBuffer();
+                this.curveBuffers[ku][kv].uvNext = gl.createBuffer();
+                this.curveBuffers[ku][kv].directions = gl.createBuffer();
+                this.curveBuffers[ku][kv].colors = gl.createBuffer();
+                this.curveBuffers[ku][kv].indices = gl.createBuffer();
             }
 
-            let vNodes = [];
-            for (var i = 0; i <= this.v_knot_vector.length - this.v_degree; ++i) {
-                let node = 0;
-                for (var n = 1; n <= this.v_degree; ++n) {
-                    node += this.v_knot_vector[i + n];
+            /* Upload UV values */
+            let uvNow = []
+            let uvPrevious = []
+            let uvNext = []
+            let direction = [];
+            let indices = [];
+            let colors = [];
+            let ctlIdxOffset = 0;
+
+            let umin = this.u_knot_vector[ku]
+            let umax = this.u_knot_vector[ku + 1]
+            let vmin = this.v_knot_vector[kv]
+            let vmax = this.v_knot_vector[kv + 1]
+            if (this.show_node_values) {
+                /* Compute node values */
+                let uNodes = [];
+                for (var i = 0; i < this.u_knot_vector.length - (this.u_degree + 1); ++i) {
+                    let node = 0;
+                    for (var n = 1; n <= this.u_degree; ++n) {
+                        node += this.u_knot_vector[i + n];
+                    }
+                    node /= this.u_degree;
+                    uNodes.push(node);
                 }
-                node /= this.v_degree;
-                vNodes.push(node);
+
+                let vNodes = [];
+                for (var i = 0; i <= this.v_knot_vector.length - (this.v_degree + 1); ++i) {
+                    let node = 0;
+                    for (var n = 1; n <= this.v_degree; ++n) {
+                        node += this.v_knot_vector[i + n];
+                    }
+                    node /= this.v_degree;
+                    vNodes.push(node);
+                }
+
+                /* Add a curve for all uNodes in this patch */
+                for (var i = 0; i < uNodes.length; ++i) {
+                    if ((uNodes[i] >= umin) && (uNodes[i] <= umax)) {
+                        let u_val = (uNodes[i] - umin) / (umax - umin);
+
+                        /* Node is within patch, add a curve. */
+                        for (var s = 0; s <= this.num_samples; ++s) {
+                            uvPrevious.push(u_val, (s - ((s==0)?0:1)) / this.num_samples);
+                            uvPrevious.push(u_val, (s - ((s==0)?0:1)) / this.num_samples);
+
+                            uvNext.push(u_val, (s + ((s==this.num_samples)?0:1)) / this.num_samples);
+                            uvNext.push(u_val, (s + ((s==this.num_samples)?0:1)) / this.num_samples);
+                            
+                            uvNow.push(u_val, s / this.num_samples);
+                            uvNow.push(u_val, s / this.num_samples);
+
+                            direction.push(-1, 1)
+
+                            var rgb = hslToRgb(i * (1.0 / this.getNumUControlPoints()), 1., .5);;
+
+                            colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                            colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                            if (s != this.num_samples) {
+                                let offset = ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+
+                                /* each two points creates two triangles in our strip. */
+                                indices.push(
+                                    s * 2 + offset,
+                                    s * 2 + 2 + offset,
+                                    s * 2 + 1 + offset,
+                                    s * 2 + 2 + offset,
+                                    s * 2 + 3 + offset,
+                                    s * 2 + 1 + offset); // first pt, second pt
+                            }
+                        }
+
+                        ctlIdxOffset = (uvNow.length / 2);
+                    }
+                }
+
+                /* Add a curve for all vNodes in this patch */
+                for (var i = 0; i < vNodes.length; ++i) {
+                    if ((vNodes[i] >= vmin) && (vNodes[i] <= vmax)) {
+                        let v_val = (vNodes[i] - vmin) / (vmax - vmin);
+
+                        for (var s = 0; s <= this.num_samples; ++s) {
+                            uvPrevious.push((s - ((s==0)?0:1)) / this.num_samples, v_val);
+                            uvPrevious.push((s - ((s==0)?0:1)) / this.num_samples, v_val);
+
+                            uvNext.push((s + ((s==this.num_samples)?0:1)) / this.num_samples, v_val);
+                            uvNext.push((s + ((s==this.num_samples)?0:1)) / this.num_samples, v_val);
+                            
+                            uvNow.push(s / this.num_samples, v_val);
+                            uvNow.push(s / this.num_samples, v_val);
+                            
+                            direction.push(-1, 1)
+
+                            var rgb = hslToRgb(i * (1.0 / this.getNumVControlPoints()), 1., .5);;
+
+                            colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                            colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+
+                            if (s != this.num_samples) {
+                                let offset = ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                                // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
+                                /* each two points creates two triangles in our strip. */
+                                indices.push(
+                                    s * 2 + offset,
+                                    s * 2 + 2 + offset,
+                                    s * 2 + 1 + offset,
+                                    s * 2 + 2 + offset,
+                                    s * 2 + 3 + offset,
+                                    s * 2 + 1 + offset); // first pt, second pt
+                            }
+                        }
+                        ctlIdxOffset = (uvNow.length / 2);
+                    }
+                }
+
             }
 
-            /* Add a curve for all uNodes in this patch */
-            for (var i = 0; i < uNodes.length; ++i) {
-                if ((uNodes[i] >= umin) && (uNodes[i] <= umax)) {
-                    let u_val = (uNodes[i] - umin) / (umax - umin);
 
-                    /* Node is within patch, add a curve. */
+            let numU = 8;
+            let numV = 8;
+
+            if (this.show_mesh) {
+                /* Lines with fixed U */
+                for (var u_idx = 0; u_idx < numU; ++u_idx) {
                     for (var s = 0; s <= this.num_samples; ++s) {
-                        uv.push(u_val, s / this.num_samples);
-                        uv.push(u_val, s / this.num_samples);
-                        direction.push(-1, 1)
+                        // uvNow.push((u_idx + 1) / (numU + 1), s / this.num_samples);
+                        // uvNow.push((u_idx + 1) / (numU + 1), s / this.num_samples);
 
-                        var rgb = hslToRgb(i * (1.0 / this.getNumUControlPoints()), 1., .5);;
+                        uvPrevious.push((u_idx) / (numU), (s - ((s==0)?0:1)) / this.num_samples);
+                        uvPrevious.push((u_idx) / (numU), (s - ((s==0)?0:1)) / this.num_samples);
 
-                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
-                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                        uvNext.push((u_idx) / (numU), (s + ((s==this.num_samples)?0:1)) / this.num_samples);
+                        uvNext.push((u_idx) / (numU), (s + ((s==this.num_samples)?0:1)) / this.num_samples);
+                        
+                        uvNow.push((u_idx) / (numU), s / this.num_samples);
+                        uvNow.push((u_idx) / (numU), s / this.num_samples);
+
+                        direction.push(-1 * .1, 1 * .1)
+                        colors.push(0.5, .5, .5, 1.0);
+                        colors.push(0.5, .5, .5, 1.0);
                         if (s != this.num_samples) {
-                            let offset = ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+                            let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
 
                             /* each two points creates two triangles in our strip. */
                             indices.push(
@@ -847,28 +979,31 @@ class BSpline {
                                 s * 2 + 1 + offset); // first pt, second pt
                         }
                     }
-
-                    ctlIdxOffset = (uv.length / 2);
                 }
-            }
 
-            /* Add a curve for all vNodes in this patch */
-            for (var i = 0; i < vNodes.length; ++i) {
-                if ((vNodes[i] >= vmin) && (vNodes[i] <= vmax)) {
-                    let v_val = (vNodes[i] - vmin) / (vmax - vmin);
+                ctlIdxOffset = (uvNow.length / 2);
 
+                /* Lines with fixed V */
+                for (var v_idx = 0; v_idx < numV; ++v_idx) {
                     for (var s = 0; s <= this.num_samples; ++s) {
-                        uv.push(s / this.num_samples, v_val);
-                        uv.push(s / this.num_samples, v_val);
-                        direction.push(-1, 1)
+                        // uvNow.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
+                        // uvNow.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
 
-                        var rgb = hslToRgb(i * (1.0 / this.getNumVControlPoints()), 1., .5);;
 
-                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
-                        colors.push(rgb[0], rgb[1], rgb[2], 1.0);
+                        uvPrevious.push((s - ((s==0)?0:1)) / this.num_samples, (v_idx) / (numV));
+                        uvPrevious.push((s - ((s==0)?0:1)) / this.num_samples, (v_idx) / (numV));
 
+                        uvNext.push((s + ((s==this.num_samples)?0:1)) / this.num_samples, (v_idx) / (numV));
+                        uvNext.push((s + ((s==this.num_samples)?0:1)) / this.num_samples, (v_idx) / (numV));
+                        
+                        uvNow.push(s / this.num_samples, (v_idx) / (numV));
+                        uvNow.push(s / this.num_samples, (v_idx) / (numV));
+
+                        direction.push(-1 * .1, 1 * .1)
+                        colors.push(0.5, .5, .5, 1.0);
+                        colors.push(0.5, .5, .5, 1.0);
                         if (s != this.num_samples) {
-                            let offset = ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                            let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
                             // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
                             /* each two points creates two triangles in our strip. */
                             indices.push(
@@ -880,144 +1015,114 @@ class BSpline {
                                 s * 2 + 1 + offset); // first pt, second pt
                         }
                     }
-                    ctlIdxOffset = (uv.length / 2);
                 }
             }
 
+
+            ctlIdxOffset = (uvNow.length / 2);
+
+            if (this.show_knot_values) {
+
+                /* Knot Values */
+                for (var u_idx = 0; u_idx <= 1; ++u_idx) {
+                    for (var s = 0; s <= this.num_samples; ++s) {
+                        // uvNow.push(u_idx, s / this.num_samples);
+                        // uvNow.push(u_idx, s / this.num_samples);
+
+                        uvPrevious.push(u_idx, (s - ((s==0)?0:1)) / this.num_samples);
+                        uvPrevious.push(u_idx, (s - ((s==0)?0:1)) / this.num_samples);
+
+                        uvNext.push(u_idx, (s + ((s==this.num_samples)?0:1)) / this.num_samples);
+                        uvNext.push(u_idx, (s + ((s==this.num_samples)?0:1)) / this.num_samples);
+                        
+                        uvNow.push(u_idx, s / this.num_samples);
+                        uvNow.push(u_idx, s / this.num_samples);
+
+                        
+
+                        direction.push(-1, 1)
+                        colors.push(1.0, 1.0, 1.0, 1.0);
+                        colors.push(1.0, 1.0, 1.0, 1.0);
+                        if (s != this.num_samples) {
+                            let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
+
+                            /* each two points creates two triangles in our strip. */
+                            indices.push(
+                                s * 2 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 1 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 3 + offset,
+                                s * 2 + 1 + offset); // first pt, second pt
+                        }
+                    }
+                }
+
+                ctlIdxOffset = (uvNow.length / 2);
+
+                for (var v_idx = 0; v_idx <= 1; ++v_idx) {
+                    for (var s = 0; s <= this.num_samples; ++s) {
+                        // uvNow.push(s / this.num_samples, v_idx);
+                        // uvNow.push(s / this.num_samples, v_idx);
+                        uvPrevious.push((s - ((s==0)?0:1)) / this.num_samples, v_idx);
+                        uvPrevious.push((s - ((s==0)?0:1)) / this.num_samples, v_idx);
+
+                        uvNext.push((s + ((s==this.num_samples)?0:1)) / this.num_samples, v_idx);
+                        uvNext.push((s + ((s==this.num_samples)?0:1)) / this.num_samples, v_idx);
+                        
+                        uvNow.push(s / this.num_samples, v_idx);
+                        uvNow.push(s / this.num_samples, v_idx);
+
+                        direction.push(-1, 1)
+                        colors.push(1.0, 1.0, 1.0, 1.0);
+                        colors.push(1.0, 1.0, 1.0, 1.0);
+                        if (s != this.num_samples) {
+                            let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
+                            // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
+                            /* each two points creates two triangles in our strip. */
+                            indices.push(
+                                s * 2 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 1 + offset,
+                                s * 2 + 2 + offset,
+                                s * 2 + 3 + offset,
+                                s * 2 + 1 + offset); // first pt, second pt
+                        }
+                    }
+                }
+            }
+            ctlIdxOffset = (uvNow.length / 2);
+
+
+
+
+
+
+
+
+            /* Upload Surface Data */
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].uvNow);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvNow), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].uvPrevious);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvPrevious), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].uvNext);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvNext), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].directions);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(direction), gl.STATIC_DRAW);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].colors);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+            this.curveBuffers[ku][kv].num_verticies = (uvNow.length / 2);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.curveBuffers[ku][kv].indices);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+            this.curveBuffers[ku][kv].num_indices = indices.length;
         }
-
-
-        let numU = 3;
-        let numV = 3;
-
-        if (this.show_mesh)
-        {
-            /* Lines with fixed U */
-            for (var u_idx = 0; u_idx < numU; ++u_idx) {
-                for (var s = 0; s <= this.num_samples; ++s) {
-                    uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
-                    uv.push((u_idx + 1) / (numU + 1), s / this.num_samples);
-                    direction.push(-1, 1)
-                    colors.push(0.5, .5, .5, 1.0);
-                    colors.push(0.5, .5, .5, 1.0);
-                    if (s != this.num_samples) {
-                        let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
-
-                        /* each two points creates two triangles in our strip. */
-                        indices.push(
-                            s * 2 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 1 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 3 + offset,
-                            s * 2 + 1 + offset); // first pt, second pt
-                    }
-                }
-            }
-
-            ctlIdxOffset = (uv.length / 2);
-
-            /* Lines with fixed V */
-            for (var v_idx = 0; v_idx < numV; ++v_idx) {
-                for (var s = 0; s <= this.num_samples; ++s) {
-                    uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
-                    uv.push(s / this.num_samples, (v_idx + 1) / (numV + 1));
-                    direction.push(-1, 1)
-                    colors.push(0.5, .5, .5, 1.0);
-                    colors.push(0.5, .5, .5, 1.0);
-                    if (s != this.num_samples) {
-                        let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
-                        // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
-                        /* each two points creates two triangles in our strip. */
-                        indices.push(
-                            s * 2 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 1 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 3 + offset,
-                            s * 2 + 1 + offset); // first pt, second pt
-                    }
-                }
-            }
-        }
-
-
-        ctlIdxOffset = (uv.length / 2);
-
-        if (this.show_knot_values) {
-
-            /* Knot Values */
-            for (var u_idx = 0; u_idx <= 1; ++u_idx) {
-                for (var s = 0; s <= this.num_samples; ++s) {
-                    uv.push(u_idx, s / this.num_samples);
-                    uv.push(u_idx, s / this.num_samples);
-                    direction.push(-1, 1)
-                    colors.push(1.0, 1.0, 1.0, 1.0);
-                    colors.push(1.0, 1.0, 1.0, 1.0);
-                    if (s != this.num_samples) {
-                        let offset = (2 * (this.num_samples + 1) * u_idx) + ctlIdxOffset; // 2 points per point.  handle_samples + 1 points. 
-
-                        /* each two points creates two triangles in our strip. */
-                        indices.push(
-                            s * 2 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 1 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 3 + offset,
-                            s * 2 + 1 + offset); // first pt, second pt
-                    }
-                }
-            }
-
-            ctlIdxOffset = (uv.length / 2);
-
-            for (var v_idx = 0; v_idx <= 1; ++v_idx) {
-                for (var s = 0; s <= this.num_samples; ++s) {
-                    uv.push(s / this.num_samples, v_idx);
-                    uv.push(s / this.num_samples, v_idx);
-                    direction.push(-1, 1)
-                    colors.push(1.0, 1.0, 1.0, 1.0);
-                    colors.push(1.0, 1.0, 1.0, 1.0);
-                    if (s != this.num_samples) {
-                        let offset = (2 * (this.num_samples + 1) * v_idx) + ctlIdxOffset; // 2 points per point. 6 floats per point. handle_samples + 1 points. 
-                        // ctlIndices.push((handlePoints.length/3) -  s * 2 + (i * this.handle_samples + 1), s*2+1 + (i * this.handle_samples + 1));
-                        /* each two points creates two triangles in our strip. */
-                        indices.push(
-                            s * 2 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 1 + offset,
-                            s * 2 + 2 + offset,
-                            s * 2 + 3 + offset,
-                            s * 2 + 1 + offset); // first pt, second pt
-                    }
-                }
-            }
-        }
-        ctlIdxOffset = (uv.length / 2);
-
-        
-
-
-
-
-
-
-        /* Upload Surface Data */
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.uv);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.directions);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(direction), gl.STATIC_DRAW);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.colors);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-
-        this.curveBuffers.num_verticies = (uv.length / 2);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.curveBuffers.indices);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-        this.curveBuffers.num_indices = indices.length;
     }
 
     updateSurfaceBuffers() {
@@ -1180,7 +1285,7 @@ class BSpline {
                 let handle_pos = this.getHandlePosFromUV(u_idx, v_idx);
                 let result = this.intersectSphere(ray.pos, ray.dir,
                     [handle_pos[0], handle_pos[1], handle_pos[2]],
-                    this.handle_radius * 1.5);
+                    this.handle_radius);
 
                 if (result == true)
                     return (u_idx * this.getNumVControlPoints()) + v_idx;
@@ -1543,16 +1648,52 @@ class BSpline {
                     const normalize = false;
                     const stride = 0;
                     const offset = 0;
-                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.uv);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].uvNow);
                     gl.vertexAttribPointer(
-                        BSpline.BSplineProgramInfo.attribLocations.uv,
+                        BSpline.BSplineProgramInfo.attribLocations.uvNow,
                         numComponents,
                         type,
                         normalize,
                         stride,
                         offset);
                     gl.enableVertexAttribArray(
-                        BSpline.BSplineProgramInfo.attribLocations.uv);
+                        BSpline.BSplineProgramInfo.attribLocations.uvNow);
+                }
+
+                {
+                    const numComponents = 2;
+                    const type = gl.FLOAT;
+                    const normalize = false;
+                    const stride = 0;
+                    const offset = 0;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].uvPrevious);
+                    gl.vertexAttribPointer(
+                        BSpline.BSplineProgramInfo.attribLocations.uvPrevious,
+                        numComponents,
+                        type,
+                        normalize,
+                        stride,
+                        offset);
+                    gl.enableVertexAttribArray(
+                        BSpline.BSplineProgramInfo.attribLocations.uvPrevious);
+                }
+
+                {
+                    const numComponents = 2;
+                    const type = gl.FLOAT;
+                    const normalize = false;
+                    const stride = 0;
+                    const offset = 0;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].uvNext);
+                    gl.vertexAttribPointer(
+                        BSpline.BSplineProgramInfo.attribLocations.uvNext,
+                        numComponents,
+                        type,
+                        normalize,
+                        stride,
+                        offset);
+                    gl.enableVertexAttribArray(
+                        BSpline.BSplineProgramInfo.attribLocations.uvNext);
                 }
 
                 // direction
@@ -1562,7 +1703,7 @@ class BSpline {
                     const normalize = false;
                     const stride = 0;
                     const offset = 0;
-                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.directions);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].directions);
                     gl.vertexAttribPointer(
                         BSpline.BSplineProgramInfo.attribLocations.direction,
                         numComponents,
@@ -1581,7 +1722,7 @@ class BSpline {
                     const normalize = false;
                     const stride = 0;
                     const offset = 0;
-                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers.colors);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.curveBuffers[ku][kv].colors);
                     gl.vertexAttribPointer(
                         BSpline.BSplineProgramInfo.attribLocations.color,
                         numComponents,
@@ -1610,7 +1751,7 @@ class BSpline {
 
                 gl.uniform1f(
                     BSpline.BSplineProgramInfo.uniformLocations.thickness,
-                    this.thickness);
+                    this.thickness * .5);
 
                 gl.uniform1f(
                     BSpline.BSplineProgramInfo.uniformLocations.aspect,
@@ -1686,16 +1827,17 @@ class BSpline {
 
                 {
                     // const vertexCount = (this.num_samples * 2 * 6) * this.num_samples;
-                    // gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.curveBuffers.num_verticies);
+                    // gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.curveBuffers[ku][kv].num_verticies);
                     const type = gl.UNSIGNED_SHORT;
                     const offset = 0;
-                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.curveBuffers.indices);
-                    gl.drawElements(gl.TRIANGLES, this.curveBuffers.num_indices, type, offset);
+                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.curveBuffers[ku][kv].indices);
+                    gl.drawElements(gl.TRIANGLES, this.curveBuffers[ku][kv].num_indices, type, offset);
                 }
 
             }
         }
 
+        this.curve_moved = false;
     }
 
     drawSurface(projection, modelView, aspect, time) {

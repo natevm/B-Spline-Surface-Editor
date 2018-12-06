@@ -49,8 +49,8 @@ class BSplineEditor {
         this.lastx = 0.0;
         this.lasty = 0.0;
         
-        this.rotX = 0.0;
-        this.rotY = 0.0;
+        this.rotX = 3.14 * .25;
+        this.rotY = 3.14 * .25;
         this.pos = vec3.create();
         
         /* Rotation */
@@ -533,6 +533,11 @@ class BSplineEditor {
         // if (this.editEnabled)
         // {
 
+            if (this.snappingEnabled) {
+                newPos[0] = Math.round(10.0 * newPos[0])/10.0;
+                newPos[1] = Math.round(10.0 * newPos[1])/10.0;
+                newPos[2] = Math.round(10.0 * newPos[2])/10.0;
+            }
             this.splines[this.selectedBSpline].moveHandle(this.selectedHandle, newPos);
                 // Math.round(100 * (x - this.originalHandlePos[0]))/100,
                 // Math.round(100 *(y - this.originalHandlePos[1]))/100 );
@@ -755,6 +760,7 @@ class BSplineEditor {
         this.showControlPolygons = visible;
         for (var j = 0; j < this.splines.length; ++j) {
             this.splines[j].show_control_polygon = this.showControlPolygons;
+            this.splines[j].curve_moved = true;
         }
     }
 
@@ -762,6 +768,7 @@ class BSplineEditor {
         this.showControlHandles = visible;
         for (var j = 0; j < this.splines.length; ++j) {
             this.splines[j].show_control_points = this.showControlHandles;
+            this.splines[j].curve_moved = true;
         }
     }
 
@@ -769,6 +776,7 @@ class BSplineEditor {
         this.showBSplines = visible;
         for (var j = 0; j < this.splines.length; ++j) {
             this.splines[j].show_bspline = this.showBSplines;
+            this.splines[j].curve_moved = true;
         }
     }
 
@@ -776,6 +784,7 @@ class BSplineEditor {
         this.showSurface = visible;
         for (var j = 0; j < this.splines.length; ++j) {
             this.splines[j].show_surface = this.showSurface;
+            this.splines[j].curve_moved = true;
         }
     }
 
@@ -783,6 +792,7 @@ class BSplineEditor {
         this.showMesh = visible;
         for (var j = 0; j < this.splines.length; ++j) {
             this.splines[j].show_mesh = this.showMesh;
+            this.splines[j].curve_moved = true;
         }
     }
 
@@ -790,6 +800,7 @@ class BSplineEditor {
         this.showKnotValues = visible;
         for (var j = 0; j < this.splines.length; ++j) {
             this.splines[j].show_knot_values = this.showKnotValues;
+            this.splines[j].curve_moved = true;
         }
     }
 
@@ -797,12 +808,27 @@ class BSplineEditor {
         this.showNodes = visible;
         for (var j = 0; j < this.splines.length; ++j) {
             this.splines[j].show_node_values = this.showNodes;
+            this.splines[j].curve_moved = true;
         }
     }
 
     resetCamera() {
-        vec3.set(this.pos, 0,0,0)
         this.rotX = 0.0;
+        this.rotY = 0.0;
+    }
+
+    lookAtXY() {
+        this.rotX = 0.0;
+        this.rotY = 0.0;
+    }
+
+    lookAtXZ() {
+        this.rotX = 0.0;
+        this.rotY = 3.14 * .5;
+    }
+
+    lookAtYZ() {
+        this.rotX = 3.14 * .5;
         this.rotY = 0.0;
     }
 
@@ -862,17 +888,32 @@ class BSplineEditor {
         // mat4.multiply(this.perspectiveMatrix, this.perspectiveMatrix, view);
         mat4.scale(this.viewMatrix, this.viewMatrix, [1.0/this.zoom, 1.0/this.zoom, 1.0/this.zoom]);
 
+        let cpos = vec3.create();
+        let cright = vec3.create();
+        let cup = vec3.create();
+        let cforward = vec3.create();
+
+        vec3.set(cpos, this.viewMatrix[3], this.viewMatrix[7], this.viewMatrix[11]);
+        vec3.set(cforward, this.viewMatrix[2], this.viewMatrix[6], this.viewMatrix[10]);
+        
         /* Rotation */
-        mat4.rotate(this.viewMatrix, this.viewMatrix, -this.rotY, [1, 0, 0]);
-        mat4.rotate(this.viewMatrix, this.viewMatrix, -this.rotX, [0, 1, 0]);
+        
+        vec3.set(cup, this.viewMatrix[4], this.viewMatrix[5], this.viewMatrix[6]);
+        mat4.rotate(this.viewMatrix, this.viewMatrix, this.rotX, cup);
+        
+        vec3.set(cright, this.viewMatrix[0], this.viewMatrix[1], this.viewMatrix[2]);
+        mat4.rotate(this.viewMatrix, this.viewMatrix, this.rotY, cright);
+
 
         this.rotX += this.drx;
         this.rotY += this.dry;
-        if (this.rotY >= 3.14 * .5) {this.dry = 0; this.ddry = 0;}
-        if (this.rotY <= -3.14 * .5) {this.dry = 0; this.ddry = 0;}
+        
+        if (this.rotY > 3.14 * .5) {this.rotY = 3.14 * .5; this.dry = 0; this.ddry = 0;}
+        if (this.rotY < -3.14 * .5) {this.rotY = -3.14 * .5; this.dry = 0; this.ddry = 0;}
         // if (this.rotX >= 3.14 * .5) {this.dry = 0; this.ddry = 0;};
-        this.rotY = Math.min(this.rotY, 3.14 * .49);
-        this.rotY = Math.max(this.rotY, -3.14 * .49);
+        this.rotY = Math.min(this.rotY, 3.14);
+        this.rotY = Math.max(this.rotY, -3.14);
+
         this.drx += this.ddrx;
         this.dry += this.ddry;
         this.ddrx = 0.0;
@@ -895,11 +936,7 @@ class BSplineEditor {
         this.ddx *= .8;
         this.ddy *= .8;
 
-        let cpos = vec3.create();
-        let cright = vec3.create();
-        let cup = vec3.create();
-        let cforward = vec3.create();
-
+        
         vec3.set(cright, this.viewMatrix[0], this.viewMatrix[4], this.viewMatrix[8]);
         vec3.set(cup, this.viewMatrix[1], this.viewMatrix[5], this.viewMatrix[9]);
         vec3.set(cforward, this.viewMatrix[2], this.viewMatrix[6], this.viewMatrix[10]);
@@ -930,7 +967,7 @@ class BSplineEditor {
             else
                 this.splines[i].handle_radius = .01 * this.zoom;//.005;//30 / this.zoom;
             this.splines[i].handle_thickness = .005;//5 / this.zoom;
-            this.splines[i].thickness = .005;//5 / this.zoom;
+            this.splines[i].thickness = .01;//5 / this.zoom;
         }
 
         /* Draw all unselected splines */

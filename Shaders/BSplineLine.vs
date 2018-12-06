@@ -1,4 +1,6 @@
-attribute vec2 uv;
+attribute vec2 uv_now;
+attribute vec2 uv_previous;
+attribute vec2 uv_next;
 attribute float direction; 
 attribute vec4 color; 
 
@@ -135,13 +137,14 @@ vec3 deBoor(int ku, int kv, float u, float v, int uDeg, int vDeg) {
 }
 
 void main(void) {
-    float uNow = (uv[0] * (tMaxU - tMinU)) + tMinU;
-    float uPrev = max(uNow - .001, tMinU);
-    float uNext = min(uNow + .001, tMaxU);
+    float uNow = (uv_now[0] * (tMaxU - tMinU)) + tMinU;
+    float uPrev = (uv_previous[0] * (tMaxU - tMinU)) + tMinU;
+    float uNext = (uv_next[0] * (tMaxU - tMinU)) + tMinU;
 
-    float vNow = (uv[1] * (tMaxV - tMinV)) + tMinV;
-    float vPrev = max(vNow - .001, tMinV);
-    float vNext = min(vNow + .001, tMaxV);
+    float vNow = (uv_now[1] * (tMaxV - tMinV)) + tMinV;
+    float vPrev = (uv_previous[1] * (tMaxV - tMinV)) + tMinV;
+    float vNext = (uv_next[1] * (tMaxV - tMinV)) + tMinV;
+    
 
     vec3 previous = deBoor(uKnotIndex, vKnotIndex, uPrev, vPrev, uDegree, vDegree);
     vec3 position = deBoor(uKnotIndex, vKnotIndex, uNow, vNow, uDegree, vDegree);
@@ -155,9 +158,9 @@ void main(void) {
     vec4 nextProjected = projViewModel * vec4(next, 1.0);
 
     //get 2D screen space with W divide and aspect correction
-    vec2 currentScreen = currentProjected.xy / currentProjected.w * aspectVec;
-    vec2 previousScreen = previousProjected.xy / previousProjected.w * aspectVec;
-    vec2 nextScreen = nextProjected.xy / nextProjected.w * aspectVec;
+    vec2 currentScreen = (currentProjected.xy / currentProjected.w) * aspectVec;
+    vec2 previousScreen = (previousProjected.xy / previousProjected.w) * aspectVec;
+    vec2 nextScreen = (nextProjected.xy / nextProjected.w) * aspectVec;
 
     float len = thickness;
     float orientation = direction;
@@ -184,7 +187,7 @@ void main(void) {
         dir = tangent;
         len = min(thickness / dot(miter, perp), .05);
         } else {
-        dir = dirA;
+            dir = dirA;
         }
     }
     vec2 normal = vec2(-dir.y, dir.x);

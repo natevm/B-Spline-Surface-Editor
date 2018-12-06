@@ -48,9 +48,14 @@
                                 <md-menu-item>
                                     <md-button onclick="document.getElementById('UploadBSplineSurfaceFile').click();">
                                         Import B-Spline Surface...
-                                        <span class="md-alt-text"> {{ 'M-O' | keyboardShortcut }}</span>
                                     </md-button>
                                     <input class="ng-hide" id="UploadBSplineSurfaceFile" type="file" />
+                                </md-menu-item>
+                                <md-menu-item>
+                                    <md-button onclick="document.getElementById('UploadBSplineCurveFamilyFile').click();">
+                                        Import B-Spline Curve Family...
+                                    </md-button>
+                                    <input class="ng-hide" id="UploadBSplineCurveFamilyFile" type="file" />
                                 </md-menu-item>
                                 <!-- <md-menu-item>
                                     <md-button onclick="document.getElementById('UploadBSplineFile').click();">
@@ -178,7 +183,21 @@
                                 <md-menu-item class="md-indent">
                                     <md-button ng-click="resetCamera($event)">
                                         Reset Camera
-                                        <span class="md-alt-text">{{ 'M-S-H' | keyboardShortcut }}</span>
+                                    </md-button>
+                                </md-menu-item>
+                                <md-menu-item class="md-indent">
+                                    <md-button ng-click="lookAtXY($event)">
+                                        Look at XY
+                                    </md-button>
+                                </md-menu-item>
+                                <md-menu-item class="md-indent">
+                                    <md-button ng-click="lookAtXZ($event)">
+                                        Look at XZ
+                                    </md-button>
+                                </md-menu-item>
+                                <md-menu-item class="md-indent">
+                                    <md-button ng-click="lookAtYZ($event)">
+                                        Look at YZ
                                     </md-button>
                                 </md-menu-item>
 
@@ -201,14 +220,13 @@
                                 <md-menu-item type="checkbox" ng-model="settings.showNodeValues" ng-click="updateVisibility($event)">Show
                                     BSpline Node Values</md-menu-item>
                                 <md-menu-divider></md-menu-divider>
-                                <md-menu-item type="checkbox" ng-model="settings.fullScreen" ng-click="toggleFullScreen($event)"
-                                    nv>Full screen</md-menu-item>
-                                <md-menu-item>
+                                <!-- <md-menu-item type="checkbox" ng-model="settings.fullScreen" ng-click="toggleFullScreen($event)"
+                                    nv>Full screen</md-menu-item> -->
+                                <!-- <md-menu-item>
                                     <md-button ng-click="goTo2DEditor()">
                                         Go to 2D Editor
-                                        <!-- <span class="md-alt-text"> {{ 'M-O' | keyboardShortcut }}</span> -->
                                     </md-button>
-                                </md-menu-item>
+                                </md-menu-item> -->
                                 <md-menu-divider></md-menu-divider>
                                 <md-menu-item style="overflow: hidden;">
                                     <md-slider style="width: 100%;" class="zoomSlider" ng-model="settings.zoom"

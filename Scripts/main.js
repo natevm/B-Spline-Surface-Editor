@@ -230,7 +230,7 @@ angular
                     assert(numBSplineSurfaces >= 0, "Number of surfaces must be greater than or equal to zero! (P >= 0)")
                     lines = lines.splice(1)
         
-                    var splines = [];
+                    let splines = [];
                     var separators = [' ', '\t'];
                     for (var i = 0; i < numBSplineSurfaces; ++i) {
                         var numPoints = -1;
@@ -264,8 +264,8 @@ angular
                         lines[0] = lines[0].trim()
                         var str_knot_vector = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
                         str_knot_vector = cleanArray(str_knot_vector)
-                        for (var i = 0; i < str_knot_vector.length; ++i) {
-                            u_knot_vector.push(parseFloat(str_knot_vector[i]));
+                        for (var j = 0; j < str_knot_vector.length; ++j) {
+                            u_knot_vector.push(parseFloat(str_knot_vector[j]));
                         }
                         lines = lines.splice(1)
 
@@ -273,15 +273,15 @@ angular
                         lines[0] = lines[0].trim()
                         str_knot_vector = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
                         str_knot_vector = cleanArray(str_knot_vector)
-                        for (var i = 0; i < str_knot_vector.length; ++i) {
-                            v_knot_vector.push(parseFloat(str_knot_vector[i]));
+                        for (var j = 0; j < str_knot_vector.length; ++j) {
+                            v_knot_vector.push(parseFloat(str_knot_vector[j]));
                         }
                         lines = lines.splice(1)
 
                         num_u_control_points = num_u_knots - (u_degree + 1);
                         num_v_control_points = num_v_knots - (v_degree + 1);
 
-                        for (var u = 0; u < num_u_control_points; ++u) {
+                        for (var u = 0; u < num_v_control_points; ++u) {
                             control_points.push([]);
                             for (var v = 0; v < num_v_control_points; ++v) {
                                 /* Get a control point */
@@ -307,7 +307,7 @@ angular
                             u_degree: u_degree,
                             v_degree: v_degree
                         }
-                        splines[i] = new BSpline(data);
+                        splines.push(new BSpline(data));
                         
                         splines[i].show_control_points = bsplineEditor.showControlHandles;
                         splines[i].show_control_polygon = bsplineEditor.showControlPolygons;
@@ -316,8 +316,9 @@ angular
                         splines[i].show_surface = bsplineEditor.showSurface;
                         splines[i].show_knot_values = bsplineEditor.showKnotValues;
                         splines[i].show_node_values = bsplineEditor.showNodes;
-
+                        splines[i].curve_moved = true;
                         bsplineEditor.splines.push(splines[i])
+
                     }
                     console.log(lines);
                     bsplineEditor.backup();
@@ -327,6 +328,241 @@ angular
                 }
                 reader.readAsText(selectedFile);
                 document.getElementById("UploadBSplineSurfaceFile").value = ""
+            });
+
+            
+            var UploadBSplineCurveFamilyFile = document.getElementById("UploadBSplineCurveFamilyFile");
+            UploadBSplineCurveFamilyFile.addEventListener("change", (e) => {
+                var selectedFile = event.target.files[0];
+                var filename = event.target.files[0].name;
+                var reader = new FileReader();
+                reader.onload = (event) => {
+                    var separators = [' ', '\t'];
+
+                    var lines = event.target.result.split("\n");
+                    lines = cleanArray(lines)
+
+                    // Read number of curves, u_degree of curves, and number of control points per curve
+                    lines[0] = lines[0].trim()
+                    var size_data = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                    size_data = cleanArray(size_data)
+
+                    var num_v_ctl_pts = parseInt(size_data[0], 10);
+                    var u_degree = parseInt(size_data[1], 10);
+                    var num_u_ctl_pts = parseInt(size_data[2], 10);
+
+                    assert(num_v_ctl_pts >= 0, "Number of curves must be greater than or equal to zero! (P >= 0)")
+                    lines = lines.splice(1)
+        
+                    var num_u_knots = u_degree + 1 + num_u_ctl_pts;
+                    var u_knot_vector = [];
+
+                    // Read the u knot vector
+                    lines[0] = lines[0].trim()
+                    var str_knot_vector = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                    str_knot_vector = cleanArray(str_knot_vector)
+                    for (var i = 0; i < str_knot_vector.length; ++i) {
+                        u_knot_vector.push(parseFloat(str_knot_vector[i]));
+                    }
+                    lines = lines.splice(1)
+
+                    var V = [];
+
+                    /* Now read the control points for each curve */
+                    for (var v = 0; v < num_v_ctl_pts; ++v) {
+                        V.push([]);
+                        for (var u = 0; u < num_u_ctl_pts; ++u) {
+                            let p = [];
+                            /* Get a control point */
+                            lines[0] = lines[0].trim()
+                            var str_ctl_pt = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                            str_ctl_pt = cleanArray(str_ctl_pt)
+                            p.push(parseFloat(str_ctl_pt[0]));
+                            p.push(parseFloat(str_ctl_pt[1]));
+                            p.push(parseFloat(str_ctl_pt[2]));
+                            V[v].push(p);
+                            lines = lines.splice(1)
+                        }
+                    }
+
+                    
+                    /* Make a knot vector along U following Schoenberg Whitney Theorem */
+                    let v_knot_vector = [];
+                    let v_degree = 1;
+                    let v_order = 2;
+
+                    // if (num_v_ctl_pts < (v_order + 1) ) {
+                    //     v_degree = 1;
+                    //     v_order = 2;
+                    // }
+
+                    /* Push an order of control points at the front */
+                    for (var i = 0; i < v_order; ++i) {
+                        v_knot_vector.push(0);
+                    }
+
+                    /* Push internal knots */
+                    let m = (V[0].length + 1); // m - 1
+                    for (var i = 1; i < m; ++i) {
+                        v_knot_vector.push( i / m );
+                    }
+
+                    /* Push an order of control points at the back */
+                    for (var i = 0; i < v_order; ++i) {
+                        v_knot_vector.push(1);
+                    }
+
+
+
+                    // for (var i = 0; i < numBSplineCurves + v_order; ++i) {
+                    //     v_knot_vector.push((i / (numBSplineCurves + v_degree)) * 1.1 );
+                    // }
+
+                    /* Now we need to compute V nodal values. */
+                    // let vNodes = [];
+                    // for (var i = 0; i < v_knot_vector.length - v_order; ++i) {
+                    //     let node = 0;
+                    //     for (var n = 1; n <= v_degree; ++n) {
+                    //         node += v_knot_vector[i + n];
+                    //     }
+                    //     node /= v_degree;
+                    //     vNodes.push(node);
+                    // }
+
+                    // let evaluate_basis = function(t, i, k, knot_vector) {
+                    //     if (k <= 1) {
+                    //         let t_i = knot_vector[i];
+                    //         let t_i_1 = knot_vector[i + 1];
+                    //         if ((t >= t_i) && (t < t_i_1)) return 1;
+                    //         else return 0;
+                    //     }
+
+                    //     let alpha1 = (t - knot_vector[i]) / ( knot_vector[i + k] - knot_vector[i] );
+                    //     let alpha2 = (knot_vector[i + k + 1] - t) / (knot_vector[i + k + 1] - knot_vector[i + 1]);
+
+                    //     return alpha1 * evaluate_basis(t, i, k - 1, knot_vector) + alpha2 * evaluate_basis(t, i + 1, k - 1, knot_vector);
+                    // }
+
+                    // let N = [];
+                    // for (var n_i = 0; n_i < num_v_ctl_pts; ++n_i) {
+                    //     N.push([]);
+                        
+                    //     for (var b = 0; b < num_v_ctl_pts; ++b) {
+                    //         let node = vNodes[b];
+                    //         let basisValue = evaluate_basis(node, n_i, v_degree, v_knot_vector);
+                    //         N[n_i].push( basisValue );
+                    //     }
+                    // }
+                    
+
+                    // // In surface nodal interpolation, a matrix of control points C can be solved in a two step process given a matrix D 
+                    // // of data points using B transpose * C * N = D.
+
+                    // // This situation is slightly different, since we're given a set of curves.
+                    // console.log(V.length)
+                    // console.log(V[0].length)
+
+                    // Now, need to solve for C in C = V (N inverse)
+                    // First, need to compute N
+
+
+
+                    // var splines = [];
+                    // 
+                    // for (var i = 0; i < numBSplineSurfaces; ++i) {
+                    //     var numPoints = -1;
+                    //     var u_degree = -1;
+                    //     var v_degree = -1;
+                    //     
+                    //     var num_v_knots = -1;
+                    //     
+                    //     var v_knot_vector = [];
+                    //     var num_u_control_points;
+                    //     var num_v_control_points;
+                    //     
+        
+                    //     /* Get the degrees */
+                    //     lines[0] = lines[0].trim()
+                    //     var degreeArray = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                    //     degreeArray = cleanArray(degreeArray)
+                    //     u_degree = parseInt(degreeArray[0]);
+                    //     v_degree = parseInt(degreeArray[1]);
+                    //     lines = lines.splice(1)
+
+                    //     /* Get knot lengths */
+                    //     lines[0] = lines[0].trim()
+                    //     var knot_lengths = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                    //     knot_lengths = cleanArray(knot_lengths)
+                    //     num_u_knots = parseInt(knot_lengths[0]);
+                    //     num_v_knots = parseInt(knot_lengths[1]);
+                    //     lines = lines.splice(1)
+        
+                    //     /* Get U Knot Vector */
+                    //     lines[0] = lines[0].trim()
+                    //     var str_knot_vector = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                    //     str_knot_vector = cleanArray(str_knot_vector)
+                    //     for (var i = 0; i < str_knot_vector.length; ++i) {
+                    //         u_knot_vector.push(parseFloat(str_knot_vector[i]));
+                    //     }
+                    //     lines = lines.splice(1)
+
+                    //     /* Get V Knot Vector */
+                    //     lines[0] = lines[0].trim()
+                    //     str_knot_vector = lines[0].split(new RegExp('[' + separators.join('') + ']', 'g'));
+                    //     str_knot_vector = cleanArray(str_knot_vector)
+                    //     for (var i = 0; i < str_knot_vector.length; ++i) {
+                    //         v_knot_vector.push(parseFloat(str_knot_vector[i]));
+                    //     }
+                    //     lines = lines.splice(1)
+
+                    //     num_u_control_points = num_u_knots - (u_degree + 1);
+                    //     num_v_control_points = num_v_knots - (v_degree + 1);
+
+                        let control_points = [];
+                        for (var u = 0; u < num_u_ctl_pts; ++u) {
+                            control_points.push([]);
+                            for (var v = 0; v < num_v_ctl_pts; ++v) {
+                                /* Get a control point */
+                                control_points[u].push(V[v][u][0])
+                                control_points[u].push(V[v][u][1])
+                                control_points[u].push(V[v][u][2])
+                            }
+                        }
+
+                        /* Add spline to editor */
+                        var data = {
+                            control_points: control_points,
+                            u_knot_vector: u_knot_vector,
+                            v_knot_vector: v_knot_vector,
+                            is_u_open: false,
+                            is_v_open: false,
+                            is_u_uniform: false,
+                            is_v_uniform: false,
+                            u_degree: u_degree,
+                            v_degree: v_degree
+                        }
+                        let spline = new BSpline(data);
+                        
+                        spline.show_control_points = bsplineEditor.showControlHandles;
+                        spline.show_control_polygon = bsplineEditor.showControlPolygons;
+                        spline.show_mesh = bsplineEditor.showMesh;
+                        spline.show_bspline = bsplineEditor.showBSplines;
+                        spline.show_surface = bsplineEditor.showSurface;
+                        spline.show_knot_values = bsplineEditor.showKnotValues;
+                        spline.show_node_values = bsplineEditor.showNodes;
+
+                        spline.curve_moved = true;
+
+                        bsplineEditor.splines.push(spline)
+                    // }
+                    // console.log(lines);
+                    // bsplineEditor.backup();
+                    // bsplineEditor.splines[0].select();
+                    // bsplineEditor.selectedBSpline = 0; // TEMPORARY
+
+                }
+                reader.readAsText(selectedFile);
+                document.getElementById("UploadBSplineCurveFamilyFile").value = ""
             });
 
             bsplineEditor = new BSplineEditor();
@@ -485,6 +721,38 @@ angular
             );
         }
 
+        $scope.lookAtXY = function (ev) {
+            bsplineEditor.lookAtXY();
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('Camera set to XY.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        }
+
+        $scope.lookAtXZ = function (ev) {
+            bsplineEditor.lookAtXZ();
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('Camera set to XZ.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        }
+
+        $scope.lookAtYZ = function (ev) {
+            bsplineEditor.lookAtYZ();
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('Camera set to YZ.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        }
+
+        
+
         $scope.toggleOrtho = function (ev) {
             bsplineEditor.setOrthoEnabled($scope.settings.useOrtho);
         }
@@ -501,47 +769,59 @@ angular
         }
 
         $scope.save = function (ev) {
-            // // Function to download data to a file
-            // function download(data, filename, type) {
-            //     var file = new Blob([data], { type: type });
-            //     if (window.navigator.msSaveOrOpenBlob) // IE10+
-            //         window.navigator.msSaveOrOpenBlob(file, filename);
-            //     else { // Others
-            //         var a = document.createElement("a"),
-            //             url = URL.createObjectURL(file);
-            //         a.href = url;
-            //         a.download = filename;
-            //         document.body.appendChild(a);
-            //         a.click();
-            //         setTimeout(function () {
-            //             document.body.removeChild(a);
-            //             window.URL.revokeObjectURL(url);
-            //         }, 0);
-            //     }
-            // }
+            // Function to download data to a file
+            function download(data, filename, type) {
+                var file = new Blob([data], { type: type });
+                if (window.navigator.msSaveOrOpenBlob) // IE10+
+                    window.navigator.msSaveOrOpenBlob(file, filename);
+                else { // Others
+                    var a = document.createElement("a"),
+                        url = URL.createObjectURL(file);
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function () {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }, 0);
+                }
+            }
 
-            // var text = "# Number of splines: \n"
-            // text += bsplineEditor.splines.length + "\n"
-            // for (var i = 0; i < bsplineEditor.splines.length; ++i) {
-            //     text += "\n# BSpline " + i + "\n";
-            //     text += "# Degree: \n";
-            //     text += bsplineEditor.splines[i].getDegree() + "\n";
-            //     text += "# Number of control points: \n";
-            //     text += bsplineEditor.splines[i].getNumCtlPoints() + "\n";
-            //     text += "# Control point data: \n";
-            //     for (var j = 0; j < bsplineEditor.splines[i].getNumCtlPoints(); ++j) {
-            //         text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 0] + "    ";
-            //         text += bsplineEditor.splines[i].controlPoints[0][j * 3 + 1] + "\n"
-            //     }
-            //     text += "# Knot present: \n";
-            //     text += "1 \n";
-            //     text += "# Knot data: \n";
-            //     for (var j = 0; j < bsplineEditor.splines[i].knot_vector.length; ++j) {
-            //         text += bsplineEditor.splines[i].knot_vector[j] + " ";
-            //     }
-            //     text += "\n";
-            // }
-            // download(text, $scope.settings.designName + ".dat", "text");
+            var text = "# Number of surfaces: \n"
+            text += bsplineEditor.splines.length + "\n"
+
+            for (var i = 0; i < bsplineEditor.splines.length; ++i) {
+                text += "\n# Surface " + i + "\n\n";
+                text += "# Degrees: \n";
+                text += bsplineEditor.splines[i].u_degree + " " + bsplineEditor.splines[i].v_degree + "\n";
+                text += "# Lengths of Knot Vectors in U and V: \n";
+                text += bsplineEditor.splines[i].u_knot_vector.length + " " + bsplineEditor.splines[i].v_knot_vector.length + "\n";
+                
+                
+                text += "# Knot vector in U: \n"
+                
+                for (var j = 0; j < bsplineEditor.splines[i].u_knot_vector.length; ++j) {
+                    text += bsplineEditor.splines[i].u_knot_vector[j] + " ";
+                }
+                text += "\n"
+                text += "# Knot vector in U: \n"
+                for (var j = 0; j < bsplineEditor.splines[i].v_knot_vector.length; ++j) {
+                    text += bsplineEditor.splines[i].v_knot_vector[j] + " ";
+                }
+                text += "\n"
+                text += "# Control point data: \n";
+                for (var u = 0; u < bsplineEditor.splines[i].getNumUControlPoints(); u++) {
+                    for (var v = 0; v < bsplineEditor.splines[i].getNumVControlPoints(); v++) {
+                        let pos = bsplineEditor.splines[i].getHandlePosFromUV(u, v);
+
+                        text += pos[0] + "    ";
+                        text += pos[1] + "    "
+                        text += pos[2] + "\n"
+                    }
+                }
+            }
+            download(text, $scope.settings.designName + ".dat", "text");
         };
 
         $scope.renameDesign = function (ev) {
