@@ -373,7 +373,7 @@ class BSplineEditor {
             /* Compute clicked direction */
             let FocalLength = 1.0 / Math.tan(this.fovy / 2.0);
             ray.dir[0] = (2.0 * this.x - 1.0) * .5;
-            ray.dir[1] = -(2.0 * this.y - 1.0) *.5;
+            ray.dir[1] = -(2.0 * this.y - 1.0) * .5;
             ray.dir[2] = -this.near;
             ray.dir[3] = 1.0;
             /* Camera space to world space */
@@ -534,9 +534,9 @@ class BSplineEditor {
         // {
 
             if (this.snappingEnabled) {
-                newPos[0] = Math.round(5.0 * newPos[0])/5.0;
-                newPos[1] = Math.round(5.0 * newPos[1])/5.0;
-                newPos[2] = Math.round(5.0 * newPos[2])/5.0;
+                newPos[0] = Math.round(10.0 * newPos[0])/10.0;
+                newPos[1] = Math.round(10.0 * newPos[1])/10.0;
+                newPos[2] = Math.round(10.0 * newPos[2])/10.0;
             }
             this.splines[this.selectedBSpline].moveHandle(this.selectedHandle, newPos);
                 // Math.round(100 * (x - this.originalHandlePos[0]))/100,
