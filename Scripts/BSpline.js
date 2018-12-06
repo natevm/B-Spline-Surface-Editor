@@ -228,6 +228,10 @@ class BSpline {
     }
 
     constructor(obj = null, dx = 0, dy = 0, dz = 0) {
+        dx = Math.round(10.0 * dx)/10.0;
+        dy = Math.round(10.0 * dy)/10.0;
+        dz = Math.round(10.0 * dz)/10.0;
+
         this.show_bspline = true;
         this.show_control_polygon = true;
         this.show_control_points = true;
