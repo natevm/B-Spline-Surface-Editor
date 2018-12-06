@@ -281,7 +281,7 @@ angular
                         num_u_control_points = num_u_knots - (u_degree + 1);
                         num_v_control_points = num_v_knots - (v_degree + 1);
 
-                        for (var u = 0; u < num_v_control_points; ++u) {
+                        for (var u = 0; u < num_u_control_points; ++u) {
                             control_points.push([]);
                             for (var v = 0; v < num_v_control_points; ++v) {
                                 /* Get a control point */
