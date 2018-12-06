@@ -619,6 +619,50 @@ angular
             );
         };
 
+        $scope.add2x2BSpline = function (ev) {
+            console.log(ev);
+            bsplineEditor.newBSpline(2)
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('BSpline added.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        };
+
+        $scope.add3x3BSpline = function (ev) {
+            console.log(ev);
+            bsplineEditor.newBSpline(3)
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('BSpline added.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        };
+
+        $scope.add4x4BSpline = function (ev) {
+            console.log(ev);
+            bsplineEditor.newBSpline(4)
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('BSpline added.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        };
+
+        $scope.add5x5BSpline = function (ev) {
+            console.log(ev);
+            bsplineEditor.newBSpline(5)
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('BSpline added.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        };
+
         $scope.addBSpline = function (ev) {
             console.log(ev);
             bsplineEditor.newBSpline()
@@ -892,9 +936,10 @@ angular
                 .title("Help")
                 .clickOutsideToClose(true)
                 .htmlContent(
-                    '<p>Click and hold to create or remove a control handle. <\p>'
-                  + '<p>Click and drag on the empty region to move the camera. <\p>'
+                    '<p>Right click and drag to pan the camera. <\p>'
+                  + '<p>Left click and drag to rotate the camera. <\p>'
                   + '<p> Use the zoom slider to zoom in or out. <\p> '
+                  + '<p> Click and drag a control point to move it. <\p>'
                   + '<p> Edit knot vectors by clicking the abacus button on the top right. <\p>')
                 .ok('Close')
                 .targetEvent(ev)

@@ -195,7 +195,7 @@ void main(void) {
     normal.x /= aspect; // might need to multiply
 
     vec4 offset = vec4(normal * orientation, 0.0, 0.0);
-    gl_Position = currentProjected + offset + vec4(0.0, 0.0, -.0001, 0.0);
+    gl_Position = currentProjected + offset + vec4(0.0, 0.0, -.000001, 0.0);
     gl_PointSize = 1.0;
 
     normal = normalize(normal);

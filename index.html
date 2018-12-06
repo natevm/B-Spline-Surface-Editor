@@ -77,11 +77,11 @@
                                 </md-menu-item> -->
                             </md-menu-content>
                         </md-menu>
-                        <md-menu>
+                        <!-- <md-menu>
                             <button ng-click="$mdMenu.open()">
                                 Edit
                             </button>
-                            <md-menu-content>
+                            <md-menu-content> -->
                                 <!-- <md-menu-item class="md-indent">
                                     <md-icon md-svg-icon="undo"></md-icon>
                                     <md-button ng-click="undo($event)">
@@ -138,7 +138,7 @@
                                     </md-button>
                                 </md-menu-item>
                                 <md-menu-divider></md-menu-divider> -->
-                                <md-menu>
+                                <!-- <md-menu>
                                     <md-button class="button-override" ng-click="$mdMenu.open()">Insertion Mode</md-button>
                                     <md-menu-content width="3">
                                         <md-menu-item type="radio" ng-model="settings.insertionMode" ng-click="updateInsertionMode($event)"
@@ -148,7 +148,7 @@
                                         <md-menu-item type="radio" ng-model="settings.insertionMode" ng-click="updateInsertionMode($event)"
                                             value="closest">Add to Closest</md-menu-item>
                                     </md-menu-content>
-                                </md-menu>
+                                </md-menu> -->
 
                                 <!-- <md-menu>
                                     <md-button class="button-override" ng-click="$mdMenu.open()">Edit Mode</md-button>
@@ -173,8 +173,8 @@
                                 <md-menu-item type="checkbox" ng-model="settings.snapping" ng-click="updateSnapping($event)">Enable snapping</md-menu-item>
                                 <md-menu-item type="checkbox" ng-model="settings.snapToXEnabled" ng-click="updateSnapToX($event)">Snap to X</md-menu-item>
                                 <md-menu-item type="checkbox" ng-model="settings.snapToYEnabled" ng-click="updateSnapToY($event)">Snap to Y</md-menu-item> -->
-                            </md-menu-content>
-                        </md-menu>
+                            <!-- </md-menu-content>
+                        </md-menu> -->
                         <md-menu>
                             <button ng-click="$mdMenu.open()">
                                 View
@@ -264,9 +264,33 @@
                         </md-menu>
 
                         <md-menu>
-                            <md-button class="md-icon-button" aria-label="More" ng-click="addBSpline($event)">
-                                <md-tooltip md-direction="bottom">Add BSpline</md-tooltip>
-                                <md-icon md-svg-icon="img/icons/green_add.svg"></md-icon>
+                            <md-button class="md-icon-button" aria-label="More" ng-click="add2x2BSpline($event)">
+                                <md-tooltip md-direction="bottom">Add 2 X 2 patch</md-tooltip>
+                                <md-icon md-svg-icon="img/icons/two.svg"></md-icon>
+                            </md-button>
+                            <md-menu-content></md-menu-content>
+                        </md-menu>
+
+                        <md-menu>
+                            <md-button class="md-icon-button" aria-label="More" ng-click="add3x3BSpline($event)">
+                                <md-tooltip md-direction="bottom">Add 3 X 3 patch</md-tooltip>
+                                <md-icon md-svg-icon="img/icons/three.svg"></md-icon>
+                            </md-button>
+                            <md-menu-content></md-menu-content>
+                        </md-menu>
+
+                        <md-menu hide-sm hide-xs>
+                            <md-button class="md-icon-button" aria-label="More" ng-click="add4x4BSpline($event)">
+                                <md-tooltip md-direction="bottom">Add 4 X 4 patch</md-tooltip>
+                                <md-icon md-svg-icon="img/icons/four.svg"></md-icon>
+                            </md-button>
+                            <md-menu-content></md-menu-content>
+                        </md-menu>
+
+                        <md-menu>
+                            <md-button class="md-icon-button" aria-label="More" ng-click="add5x5BSpline($event)">
+                                <md-tooltip md-direction="bottom">Add 5 X 5 patch</md-tooltip>
+                                <md-icon md-svg-icon="img/icons/five.svg"></md-icon>
                             </md-button>
                             <md-menu-content></md-menu-content>
                         </md-menu>

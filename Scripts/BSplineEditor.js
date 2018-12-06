@@ -17,7 +17,7 @@ class BSplineEditor {
         this.shortcutsEnabled = true;
         this.then = 0.0;
         this.canvas = document.querySelector('#glcanvas');
-        this.gl = this.canvas.getContext('webgl') || this.canvas.getContext('experimental-webgl');
+        this.gl = this.canvas.getContext('webgl', {alpha:false}) || this.canvas.getContext('experimental-webgl');
         this.zoom = 20.0;
         this.addToFront = false;
         this.addToBack = true;
@@ -40,8 +40,8 @@ class BSplineEditor {
         this.viewMatrix = mat4.create();
 
         this.ortho = false;
-        this.near = 0.01;
-        this.far = 1000.0;
+        this.near = 0.0001;
+        this.far = 100.0;
         this.fovy = 45;
 
         this.x = 0.0;
@@ -534,9 +534,9 @@ class BSplineEditor {
         // {
 
             if (this.snappingEnabled) {
-                newPos[0] = Math.round(10.0 * newPos[0])/10.0;
-                newPos[1] = Math.round(10.0 * newPos[1])/10.0;
-                newPos[2] = Math.round(10.0 * newPos[2])/10.0;
+                newPos[0] = Math.round(5.0 * newPos[0])/5.0;
+                newPos[1] = Math.round(5.0 * newPos[1])/5.0;
+                newPos[2] = Math.round(5.0 * newPos[2])/5.0;
             }
             this.splines[this.selectedBSpline].moveHandle(this.selectedHandle, newPos);
                 // Math.round(100 * (x - this.originalHandlePos[0]))/100,
@@ -686,7 +686,7 @@ class BSplineEditor {
         this.addToClosest = addToClosest;
     }
 
-    newBSpline() {
+    newBSpline(gridSize = 5) {
         let invV = mat4.create();
         mat4.invert(invV, this.viewMatrix);
 
@@ -701,7 +701,7 @@ class BSplineEditor {
         vec3.set(cpos, invV[12], invV[13], invV[14]);
 
 
-        let spline = new BSpline(null, cpos[0] - cforward[0], cpos[1] - cforward[1], cpos[2] - cforward[2]);
+        let spline = new BSpline(null, cpos[0] - cforward[0], cpos[1] - cforward[1], cpos[2] - cforward[2], gridSize);
         
         spline.show_control_points = this.showControlHandles;
         spline.show_control_polygon = this.showControlPolygons;
@@ -857,10 +857,14 @@ class BSplineEditor {
         let gl = this.gl;
 
         /* Set OpenGL state */
+        gl.depthFunc(gl.LEQUAL);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
         gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
+        gl.enable(gl.BLEND)
+        gl.colorMask(true, true, true, true);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         /* Setup the projection */
@@ -963,9 +967,9 @@ class BSplineEditor {
         /* Resize lines */
         for (let i = 0; i < this.splines.length; ++i) {
             if (this.ortho)
-                this.splines[i].handle_radius = .02 * this.zoom;//.005;//30 / this.zoom;
+                this.splines[i].handle_radius = .03 * this.zoom;//.005;//30 / this.zoom;
             else
-                this.splines[i].handle_radius = .01 * this.zoom;//.005;//30 / this.zoom;
+                this.splines[i].handle_radius = .015 * this.zoom;//.005;//30 / this.zoom;
             this.splines[i].handle_thickness = .005;//5 / this.zoom;
             this.splines[i].thickness = .01;//5 / this.zoom;
         }
@@ -989,6 +993,9 @@ class BSplineEditor {
         // console.log("X: " + this.viewMatrix[12] +  " Y: " + this.viewMatrix[13] + " Z: " + this.viewMatrix[14] );
         // console.log("X: " + this.viewMatrix[3] +  " Y: " + this.viewMatrix[7] + " Z: " + this.viewMatrix[11] );
         // vec3.set(cpos, VP[12], VP[13], VP[14]);
+        gl.colorMask(false, false, false, true);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
 
     }
 }

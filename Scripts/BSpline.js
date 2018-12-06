@@ -227,10 +227,8 @@ class BSpline {
         return shader;
     }
 
-    constructor(obj = null, dx = 0, dy = 0, dz = 0) {
-        dx = Math.round(10.0 * dx)/10.0;
-        dy = Math.round(10.0 * dy)/10.0;
-        dz = Math.round(10.0 * dz)/10.0;
+    constructor(obj = null, dx = 0, dy = 0, dz = 0, gridSize = 5) {
+        
 
         this.show_bspline = true;
         this.show_control_polygon = true;
@@ -255,30 +253,44 @@ class BSpline {
         this.is_u_uniform = (obj == null) ? true : obj.is_u_uniform;
         this.is_v_open = (obj == null) ? true : obj.is_v_open;
         this.is_v_uniform = (obj == null) ? true : obj.is_v_uniform;
-        this.u_degree = (obj == null) ? 2 : obj.u_degree;
-        this.v_degree = (obj == null) ? 2 : obj.v_degree;
+        
 
         this.handle_moved = true;
         this.curve_moved = true;
         this.surface_moved = true;
 
-        let xoff = -2.5;
-        let yoff = -2.5;
-        let numx = 5;
-        let numy = 5;
+        let xoff = -gridSize/2.0;
+        let yoff = -gridSize/2.0;
+        let numx = gridSize;
+        let numy = gridSize;
 
         if (obj == null) {
+            if (gridSize < 3) {
+                this.u_degree = 1;
+                this.v_degree = 1;
+            }
+            else {
+                this.u_degree = 2;
+                this.v_degree = 2;
+            }
             this.control_points = [];
             for (var i = 0; i < numx; ++i) {
                 this.control_points.push([]);
                 for (var j = 0; j < numy; ++j) {
-                    this.control_points[i].push( i + yoff + dx, Math.cos(((i - 3)/(numx-1)) * 6.0 ) * Math.sin(((j - 3)/(numy-1)) * 6.0 ) + dy, j + xoff + dz);
+                    let pos = [i + yoff + dx, dy, j + xoff + dz];
+                    
+                    pos[0] = Math.round(5.0 * pos[0])/5.0;
+                    pos[1] = Math.round(5.0 * pos[1])/5.0;
+                    pos[2] = Math.round(5.0 * pos[2])/5.0;
+                    this.control_points[i].push( pos[0], pos[1], pos[2]);
                 }
                 // this.updateConstraints();
                 this.u_knot_vector = [];
                 this.v_knot_vector = [];
             }
         } else {
+            this.u_degree = obj.u_degree;
+            this.v_degree = obj.v_degree;
             this.control_points = obj.control_points.slice();
             this.u_knot_vector = obj.u_knot_vector.slice();
             this.v_knot_vector = obj.v_knot_vector.slice();
@@ -615,9 +627,9 @@ class BSpline {
                         let jnext = Math.min(j + 1, this.handle_samples);
 
                         /* Compute angles */
-                        let anglePrev = (jprev / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
-                        let angle = (j / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
-                        let angleNext = (jnext / (1.0 * this.handle_samples - 1)) * 2 * Math.PI;
+                        let anglePrev = (jprev / (1.0 * this.handle_samples)) * 2 * Math.PI;
+                        let angle = (j / (1.0 * this.handle_samples)) * 2 * Math.PI;
+                        let angleNext = (jnext / (1.0 * this.handle_samples)) * 2 * Math.PI;
 
                         /* Customize this if we need to know if a handle is selected. */
                         let rad = this.handle_radius;
@@ -655,8 +667,8 @@ class BSpline {
                         // var rgb = hslToRgb(v_idx * (1.0 / this.getNumVControlPoints()), 1., .5);;
                         // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
                         // handlePointColors.push(rgb[0], rgb[1], rgb[2], 1.0);
-                        handlePointColors.push(1.0, 1.0, 1.0, 1.0);
-                        handlePointColors.push(1.0, 1.0, 1.0, 1.0);
+                        handlePointColors.push(1.0, 1.0, 1.0, .5);
+                        handlePointColors.push(1.0, 1.0, 1.0, .5);
 
 
                         /* Indices */
@@ -731,8 +743,8 @@ class BSpline {
                 ctlPrev.push(prev_pos[0], prev_pos[1], prev_pos[2], prev_pos[0], prev_pos[1], prev_pos[2]);
                 ctlPos.push(curr_pos[0], curr_pos[1], curr_pos[2], curr_pos[0], curr_pos[1], curr_pos[2]);
 
-                ctlColors.push(1.0, 1.0, 1.0, 1.0);
-                ctlColors.push(1.0, 1.0, 1.0, 1.0);
+                ctlColors.push(1.0, 1.0, 1.0, .5);
+                ctlColors.push(1.0, 1.0, 1.0, .5);
 
                 ctlDirection.push(-1, 1);
 
@@ -767,8 +779,8 @@ class BSpline {
                 ctlPrev.push(prev_pos[0], prev_pos[1], prev_pos[2], prev_pos[0], prev_pos[1], prev_pos[2]);
                 ctlPos.push(curr_pos[0], curr_pos[1], curr_pos[2], curr_pos[0], curr_pos[1], curr_pos[2]);
 
-                ctlColors.push(1.0, 1.0, 1.0, 1.0);
-                ctlColors.push(1.0, 1.0, 1.0, 1.0);
+                ctlColors.push(1.0, 1.0, 1.0, .5);
+                ctlColors.push(1.0, 1.0, 1.0, .5);
 
                 ctlDirection.push(-1, 1);
 
@@ -2252,7 +2264,7 @@ class BSpline {
 
         gl.uniform1f(
             BSpline.LineProgramInfo.uniformLocations.thickness,
-            this.handle_thickness * .5);
+            this.handle_thickness);
 
         gl.uniform1f(
             BSpline.LineProgramInfo.uniformLocations.aspect,
@@ -2290,13 +2302,14 @@ class BSpline {
             this.drawCurves(projection, viewMatrix, aspect, time);
             // gl.depthFunc(gl.LESS)
         }
-
+        
+        
         if (this.show_control_polygon) {
-            // gl.depthFunc(gl.ALWAYS)
+            gl.depthFunc(gl.ALWAYS)
             this.drawControlCage(projection, viewMatrix, aspect, time);
-            // gl.depthFunc(gl.LESS)
+            gl.depthFunc(gl.LESS)
         }
-
+        
         if (this.show_control_points) {
             gl.depthFunc(gl.ALWAYS)
             this.drawHandles(projection, viewMatrix, aspect, time);
