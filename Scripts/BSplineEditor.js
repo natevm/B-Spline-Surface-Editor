@@ -87,29 +87,18 @@ class BSplineEditor {
         BSpline.Initialize(this.gl);
 
         this.splines = [];
-        // if (localStorage.getItem("splines")) {
-        //     let splineObjs = JSON.parse(localStorage.getItem("splines"));
-        //     for (var i = 0; i < splineObjs.length; ++i) {
-        //         this.splines.push(new BSpline(0, 0, splineObjs[i]));
-        //     }
-        // } 
-        // else {
+        if (localStorage.getItem("splines")) {
+            let splineObjs = JSON.parse(localStorage.getItem("splines"));
+            for (var i = 0; i < splineObjs.length; ++i) {
+                this.splines.push(new BSpline(splineObjs[i]));
+            }
+        } 
+        else {
             for (let i = 0; i < 1; ++i) {
                 this.splines.push(new BSpline());
-                // this.splines[i].controlPoints = [[]]
-                // for (let j = 0; j < 3; ++j) {
-                //     let insertionData = {
-                //         pos: [(4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0), (4.0 * Math.random() - 1.0)],
-                //         idx: i,
-                //         addToBack: true,
-                //         addToFront: false,
-                //         addToClosest: false
-                //     };
-                //     this.splines[i].addHandle(insertionData)
-                // }
                 this.backup();
             }
-        // }
+        }
         
         
         if (this.splines.length > 0) {
@@ -573,6 +562,7 @@ class BSplineEditor {
 
     dragHandleEnd() {
         this.draggingHandle = false;
+        this.backup();
     }
 
     rotateStart(initialX, initialY, deltaX, deltaY) {
@@ -712,24 +702,25 @@ class BSplineEditor {
         spline.show_node_values = this.showNodes;
 
         this.splines.push(spline);
+        this.backup();
 
         // console.log("newBSpline is currently unsupported");
     }
 
     /* Deletes the last clicked handle */
     deleteLastHandle() {
-        if (this.selectedBSpline != -1 && this.selectedHandle != -1) {
-            if (this.splines[this.selectedBSpline].controlPoints[0].length <= 3) {
-                this.splines.splice(this.selectedBSpline, 1);
-                this.selectedBSpline = -1;
-                this.selectedHandle = -1;
-            } else {
-                console.log("Deleting point");
-                this.splines[this.selectedBSpline].removeHandle(this.selectedHandle);
-                this.selectedHandle = -1;
-            }
-            this.backup();
-        }
+        // if (this.selectedBSpline != -1 && this.selectedHandle != -1) {
+        //     if (this.splines[this.selectedBSpline].controlPoints[0].length <= 3) {
+        //         this.splines.splice(this.selectedBSpline, 1);
+        //         this.selectedBSpline = -1;
+        //         this.selectedHandle = -1;
+        //     } else {
+        //         console.log("Deleting point");
+        //         this.splines[this.selectedBSpline].removeHandle(this.selectedHandle);
+        //         this.selectedHandle = -1;
+        //     }
+        //     this.backup();
+        // }
 
     }
 
@@ -813,8 +804,11 @@ class BSplineEditor {
     }
 
     resetCamera() {
-        this.rotX = 0.0;
-        this.rotY = 0.0;
+        this.rotX = 3.14 * .25;
+        this.rotY = 3.14 * .25;
+        this.pos[0] = 0.0;
+        this.pos[1] = 0.0;
+        this.pos[2] = 0.0;
     }
 
     lookAtXY() {

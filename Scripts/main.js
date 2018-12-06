@@ -663,6 +663,17 @@ angular
             );
         };
 
+        $scope.add8x8BSpline = function (ev) {
+            console.log(ev);
+            bsplineEditor.newBSpline(8)
+            $mdToast.show(
+                $mdToast.simple()
+                    .textContent('BSpline added.')
+                    .position('bottom right')
+                    .hideDelay(3000)
+            );
+        };
+
         $scope.addBSpline = function (ev) {
             console.log(ev);
             bsplineEditor.newBSpline()
