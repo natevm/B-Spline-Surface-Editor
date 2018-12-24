@@ -676,7 +676,7 @@ class BSplineEditor {
         this.addToClosest = addToClosest;
     }
 
-    newBSpline(gridSize = 5) {
+    newBSpline(gridSizeX = 5, gridSizeY = 5) {
         let invV = mat4.create();
         mat4.invert(invV, this.viewMatrix);
 
@@ -691,7 +691,7 @@ class BSplineEditor {
         vec3.set(cpos, invV[12], invV[13], invV[14]);
 
 
-        let spline = new BSpline(null, cpos[0] - cforward[0], cpos[1] - cforward[1], cpos[2] - cforward[2], gridSize);
+        let spline = new BSpline(null, cpos[0] - cforward[0], cpos[1] - cforward[1], cpos[2] - cforward[2], gridSizeX, gridSizeY);
         
         spline.show_control_points = this.showControlHandles;
         spline.show_control_polygon = this.showControlPolygons;

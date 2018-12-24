@@ -227,7 +227,7 @@ class BSpline {
         return shader;
     }
 
-    constructor(obj = null, dx = 0, dy = 0, dz = 0, gridSize = 5) {
+    constructor(obj = null, dx = 0, dy = 0, dz = 0, gridSizeX = 5, gridSizeY = 5) {
         
 
         this.show_bspline = true;
@@ -259,13 +259,13 @@ class BSpline {
         this.curve_moved = true;
         this.surface_moved = true;
 
-        let xoff = -gridSize/2.0;
-        let yoff = -gridSize/2.0;
-        let numx = gridSize;
-        let numy = gridSize;
+        let xoff = -gridSizeX/2.0;
+        let yoff = -gridSizeY/2.0;
+        let numx = gridSizeX;
+        let numy = gridSizeY;
 
         if (obj == null) {
-            if (gridSize < 3) {
+            if (gridSizeX < 3) {
                 this.u_degree = 1;
                 this.v_degree = 1;
             }

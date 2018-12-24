@@ -621,7 +621,7 @@ angular
 
         $scope.add2x2BSpline = function (ev) {
             console.log(ev);
-            bsplineEditor.newBSpline(2)
+            bsplineEditor.newBSpline(2, 2)
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('BSpline added.')
@@ -632,7 +632,7 @@ angular
 
         $scope.add3x3BSpline = function (ev) {
             console.log(ev);
-            bsplineEditor.newBSpline(3)
+            bsplineEditor.newBSpline(3, 3)
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('BSpline added.')
@@ -643,7 +643,7 @@ angular
 
         $scope.add4x4BSpline = function (ev) {
             console.log(ev);
-            bsplineEditor.newBSpline(4)
+            bsplineEditor.newBSpline(4, 4)
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('BSpline added.')
@@ -654,7 +654,7 @@ angular
 
         $scope.add5x5BSpline = function (ev) {
             console.log(ev);
-            bsplineEditor.newBSpline(5)
+            bsplineEditor.newBSpline(5, 5)
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('BSpline added.')
@@ -665,7 +665,7 @@ angular
 
         $scope.add8x8BSpline = function (ev) {
             console.log(ev);
-            bsplineEditor.newBSpline(8)
+            bsplineEditor.newBSpline(8, 8)
             $mdToast.show(
                 $mdToast.simple()
                     .textContent('BSpline added.')
@@ -1121,3 +1121,5 @@ angular
 
         }
     });
+
+    export {bsplineEditor};
